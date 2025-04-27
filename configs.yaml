@@ -1,0 +1,69 @@
+# All dimensionality reduction configurations
+
+umap:
+  fast:
+    n_neighbors: 10
+    min_dist: 0.1
+    n_components: 2
+    metric: "euclidean"
+    random_state: 42
+    subset_strategy: "artist_first5"
+    subset_size: 250
+
+  detail:
+    n_neighbors: 20
+    min_dist: 0.05
+    n_components: 2
+    metric: "euclidean"
+    random_state: 42
+    subset_strategy: "artist_first5"
+    subset_size: 250
+
+tsne:
+  fast:
+    perplexity: 20
+    n_components: 2
+    random_state: 42
+    learning_rate: 200.0
+    n_iter: 500  # Fewer iterations for faster results
+    subset_strategy: "artist_first5"
+    subset_size: 250
+
+  detail:
+    perplexity: 30
+    n_components: 2
+    random_state: 42
+    learning_rate: 200.0
+    n_iter: 1000
+    subset_strategy: "artist_first5"
+    subset_size: 250
+
+isomap:
+  basic:
+    n_neighbors: 5
+    n_components: 2
+    subset_strategy: "artist_first5"
+    subset_size: 250
+
+lle:
+  basic:
+    n_neighbors: 15
+    n_components: 2
+    random_state: 42
+    subset_strategy: "artist_first5"
+    subset_size: 250
+
+spectral:
+  basic:
+    n_neighbors: 10
+    n_components: 2
+    random_state: 42
+    subset_strategy: "artist_first5"
+    subset_size: 250
+
+mds:
+  basic:
+    n_components: 2
+    random_state: 42
+    subset_strategy: "artist_first5"
+    subset_size: 250
