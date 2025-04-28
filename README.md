@@ -180,6 +180,36 @@ Below are example outputs for each DR method after running the pipeline, includi
 - Projection: | 1351 | spectral | 1 | Albrecht_Durer_1.avif | Albrecht Durer | -0.0088 | -0.0141 |
 - Validation: `spectral cfg 1: 250/250 unique filenames`
 
+### PCA
+
+- Config: | 1 | artist_first5 | 250 | 0.01 | 2 | 42 |
+- Projection: | 1501 | pca | 1 | Albrecht_Durer_1.avif | Albrecht Durer | 0.1234 | -0.5678 |
+- Validation: `pca cfg 1: 250/250 unique filenames`
+
+### FA (FactorAnalysis)
+
+- Config: | 1 | artist_first5 | 250 | 2 | 42 |
+- Projection: | 1601 | fa | 1 | Albrecht_Durer_1.avif | Albrecht Durer | 0.2345 | -0.6789 |
+- Validation: `fa cfg 1: 250/250 unique filenames`
+
+### Nystroem+PCA
+
+- Config: | 1 | artist_first5 | 250 | 2 | 200 | rbf | 1.0 | 42 |
+- Projection: | 1701 | nystroem_pca | 1 | Albrecht_Durer_1.avif | Albrecht Durer | 0.3456 | -0.7890 |
+- Validation: `nystroem_pca cfg 1: 250/250 unique filenames`
+
+### NMF (Non-negative Matrix Factorization)
+
+- Config: | 1 | artist_first5 | 250 | 2 | nndsvda | 42 |
+- Projection: | 1801 | nmf | 1 | Albrecht_Durer_1.avif | Albrecht Durer | 0.4567 | -0.1234 |
+- Validation: `nmf cfg 1: 250/250 unique filenames`
+
+### DictionaryLearning
+
+- Config: | 1 | artist_first5 | 250 | 2 | 42 |
+- Projection: | 1901 | dictlearn | 1 | Albrecht_Durer_1.avif | Albrecht Durer | 0.5678 | -0.2345 |
+- Validation: `dictlearn cfg 1: 250/250 unique filenames`
+
 ---
 
 ## How to Extend
@@ -191,7 +221,21 @@ Below are example outputs for each DR method after running the pipeline, includi
   3. Add method configs to `configs.yaml`.
   4. (Re)initialize the DB if new columns are added.
 
-+**Note:** When you add a new entry to `PARAM_COLS` in `db.py`, the schema initialization logic will automatically create a new `[method]_configs` table for your method (e.g., `sammon_configs` for Sammon Mapping) the next time you run or import `db.py`. This makes it easy to extend the pipeline with new DR methods—just update `PARAM_COLS` and the rest of the process will follow the same pattern as existing methods.
+  _Example: To add NMF, add to `PARAM_COLS` in `db.py`:_
+
+  ```python
+  "nmf": ["n_components", "init", "random_state"],
+  ```
+
+  _Create `methods/nmf.py` with a `run()` function, and add an `nmf:` section to `configs.yaml`._
+
+  _Example: To add DictionaryLearning, add to `PARAM_COLS` in `db.py`:_
+
+  ```python
+  "dictlearn": ["n_components", "random_state"],
+  ```
+
+  _Create `methods/dictlearn.py` with a `run()` function, and add a `dictlearn:` section to `configs.yaml`._
 
 - **Add a new hyperparameter:**
   1. Add the column to the relevant method in `db.py`.

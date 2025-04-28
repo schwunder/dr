@@ -48,6 +48,65 @@ PARAM_COLS: Dict[str, List[str]] = {
     "sammon_random": [
         "n_dims", "n_iter", "tol", "input_type", "random_state"
     ],
+    "pca": [
+        "n_components",
+        "random_state"
+    ],
+    "ipca": [
+        "n_components",
+        "batch_size",
+        "random_state"
+    ],
+    "svd": [
+        "n_components",
+        "random_state"
+    ],
+    "fa": [
+        "n_components",
+        "random_state"
+    ],
+    "ica": [
+        "n_components",
+        "max_iter",
+        "random_state"
+    ],
+    "agg": [
+        "n_clusters"
+    ],
+    "kpca": [
+        "n_components",
+        "kernel",
+        "gamma",
+        "fit_inverse_transform",
+        "random_state"
+    ],
+    "nystroem_pca": [
+        "n_components",
+        "nystroem_components",
+        "kernel",
+        "gamma",
+        "random_state"
+    ],
+    "grp": [
+        "n_components",
+        "eps",
+        "random_state"
+    ],
+    "srp": [
+        "n_components",
+        "density",
+        "eps",
+        "random_state"
+    ],
+    "nmf": [
+        "n_components",
+        "init",
+        "random_state"
+    ],
+    "dictlearn": [
+        "n_components",
+        "random_state"
+    ],
 }
 
 @contextmanager

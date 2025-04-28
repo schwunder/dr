@@ -126,3 +126,98 @@ sammon_random:
     random_state: 42
     subset_strategy: random
     subset_size: 40
+
+pca:
+  - name: fast
+    n_components: 2
+    random_state: 42
+    subset_strategy: "artist_first5"
+    subset_size: 250
+
+ipca:
+  - name: fast
+    n_components: 2
+    batch_size: 200
+    random_state: 42
+    subset_strategy: "artist_first5"
+    subset_size: 250
+
+svd:
+  - name: fast
+    n_components: 2
+    random_state: 42
+    subset_strategy: "artist_first5"
+    subset_size: 250
+
+fa:
+  - name: fast
+    n_components: 2
+    random_state: 42
+    subset_strategy: "artist_first5"
+    subset_size: 250
+
+ica:
+  - name: fast
+    n_components: 2
+    max_iter: 500
+    random_state: 42
+    subset_strategy: "artist_first5"
+    subset_size: 250
+
+agg:
+  - name: fast
+    n_clusters: 2
+    subset_strategy: "artist_first5"
+    subset_size: 250
+
+kpca:
+  - name: fast
+    n_components: 2
+    kernel: "rbf"
+    gamma: 1.0
+    fit_inverse_transform: true
+    random_state: 42
+    subset_strategy: "artist_first5"
+    subset_size: 250
+
+nystroem_pca:
+  - name: fast
+    n_components: 2
+    nystroem_components: 200
+    kernel: "rbf"
+    gamma: 1.0
+    random_state: 42
+    subset_strategy: "artist_first5"
+    subset_size: 250
+
+grp:
+  - name: fast
+    n_components: 2
+    eps: null
+    random_state: 42
+    subset_strategy: "artist_first5"
+    subset_size: 250
+
+srp:
+  - name: fast
+    n_components: 2
+    density: auto
+    eps: null
+    random_state: 42
+    subset_strategy: "artist_first5"
+    subset_size: 250
+
+nmf:
+  - name: fast
+    n_components: 2
+    init: nndsvda
+    random_state: 42
+    subset_strategy: "artist_first5"
+    subset_size: 250
+
+dictlearn:
+  - name: fast
+    n_components: 2
+    random_state: 42
+    subset_strategy: "artist_first5"
+    subset_size: 250
