@@ -18,24 +18,23 @@ def run(embeddings, config):
     
     try:
         # Import here to avoid startup cost if not used
-        from sklearn.manifold import TSNE
+        from openTSNE import TSNE
         
         # Extract t-SNE-specific parameters from config
         tsne_params = {
             'n_components': config.get('n_components', 2),
             'perplexity': config.get('perplexity', 30),
-            'learning_rate': config.get('learning_rate', 'auto'),
+            'learning_rate': config.get('learning_rate', 200),  # openTSNE default
             'n_iter': config.get('n_iter', 1000),
             'metric': config.get('metric', 'euclidean'),
         }
         
-        # Add random_state if present
+        # openTSNE uses 'random_state'
         if 'random_state' in config:
             tsne_params['random_state'] = config['random_state']
         
-        # Add any other t-SNE parameters that might be in the config
-        for param in ['method', 'angle', 'n_iter_without_progress', 'min_grad_norm',
-                     'init', 'verbose', 'early_exaggeration']:
+        # openTSNE-specific params
+        for param in ['early_exaggeration_iter', 'early_exaggeration', 'theta', 'negative_gradient_method', 'initialization', 'verbose', 'n_jobs']:
             if param in config:
                 tsne_params[param] = config[param]
         
@@ -46,7 +45,7 @@ def run(embeddings, config):
         tsne = TSNE(**tsne_params)
         
         print("TSNE_PROCESS: Fitting and transforming data...")
-        embedding = tsne.fit_transform(embeddings)
+        embedding = tsne.fit(embeddings)
         
         print(f"TSNE_COMPLETE: Produced output shape {embedding.shape}")
         

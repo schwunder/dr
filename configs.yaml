@@ -1,9 +1,13 @@
+# configs.yaml
 # All dimensionality reduction configurations
 
 umap:
   - name: fast
     n_neighbors: 10
     min_dist: 0.1
+    spread: 1.0
+    set_op_mix_ratio: 1.0
+    local_connectivity: 1.0
     n_components: 2
     metric: "euclidean"
     random_state: 42
@@ -13,36 +17,61 @@ umap:
   - name: detail
     n_neighbors: 20
     min_dist: 0.05
+    spread: 1.0
+    set_op_mix_ratio: 1.0
+    local_connectivity: 1.0
     n_components: 2
     metric: "euclidean"
     random_state: 42
     subset_strategy: "artist_first5"
     subset_size: 250
 
+  - name: superdetail
+    n_neighbors: 30
+    min_dist: 0.01
+    spread: 2.0
+    set_op_mix_ratio: 0.5
+    local_connectivity: 2.0
+    n_components: 2
+    metric: "manhattan"
+    random_state: 123
+    subset_strategy: "random"
+    subset_size: 200
+
 tsne:
   - name: fast
     perplexity: 25
     n_components: 2
-    random_state: 42
     learning_rate: 200.0
     n_iter: 500
     early_exaggeration: 12.0
     n_iter_without_progress: 300
     min_grad_norm: 0.0000001
     metric: "euclidean"
+    random_state: 42
+    early_exaggeration_iter: 250
+    theta: 0.5
+    negative_gradient_method: "fft"
+    initialization: "pca"
+    n_jobs: 1
     subset_strategy: "artist_first5"
     subset_size: 250
 
   - name: detail
     perplexity: 35
     n_components: 2
-    random_state: 42
     learning_rate: 200.0
     n_iter: 1000
     early_exaggeration: 12.0
     n_iter_without_progress: 300
     min_grad_norm: 0.0000001
     metric: "euclidean"
+    random_state: 42
+    early_exaggeration_iter: 250
+    theta: 0.5
+    negative_gradient_method: "fft"
+    initialization: "pca"
+    n_jobs: 1
     subset_strategy: "artist_first5"
     subset_size: 250
 
@@ -74,4 +103,27 @@ mds:
     n_components: 2
     random_state: 42
     subset_strategy: "artist_first5"
+    subset_size: 250
+
+sammon:
+  - name: fast
+    n: 2
+    display: 0
+    inputdist: raw
+    maxhalves: 20
+    maxiter: 500
+    tolfun: 1e-9
+    init: pca
+    subset_strategy: random
+    subset_size: 150
+
+  - name: detail
+    n: 2
+    display: 0
+    inputdist: raw
+    maxhalves: 30
+    maxiter: 1000
+    tolfun: 1e-10
+    init: pca
+    subset_strategy: artist_first5
     subset_size: 250
