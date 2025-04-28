@@ -263,3 +263,20 @@ trimap:
     apply_pca: true
     subset_strategy: "artist_first5"
     subset_size: 250
+
+spacemap:
+  - name: fast
+    n_components: 2
+    n_near_field: 21
+    n_middle_field: 50
+    d_local: 0
+    d_global: 4.5
+    eta: 0.6
+    n_epochs: 200
+    init: spectral
+    metric: euclidean
+    verbose: true
+    plot_results: false
+    num_plots: 50
+    subset_strategy: artist_first5
+    subset_size: 250

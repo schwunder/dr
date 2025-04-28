@@ -128,6 +128,10 @@ PARAM_COLS: Dict[str, List[str]] = {
         "opt_method",
         "apply_pca"
     ],
+    "spacemap": [
+        "n_components", "n_near_field", "n_middle_field", "d_local", "d_global",
+        "eta", "n_epochs", "init", "metric", "verbose", "plot_results", "num_plots"
+    ],
 }
 
 @contextmanager

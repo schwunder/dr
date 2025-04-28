@@ -29,3 +29,4 @@ wrapt==1.17.2
 annoy
 numba
 trimap
+-e SpaceMAP
