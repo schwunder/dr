@@ -138,40 +138,134 @@ def get_embeddings_as_array(subset_data):
 
 # AGENT_NOTE: Configuration and results persistence functions
 def save_config(method, params):
-    """Save configuration and return config_id"""
+    """Save or update configuration and return config_id
+    
+    If an identical configuration already exists, it will be updated
+    with new runtime information. This is enforced by the UNIQUE constraints
+    on the configuration tables.
+    
+    Args:
+        method: The DR method name (umap, tsne, etc.)
+        params: Parameters from YAML plus runtime information
+                         
+    Returns:
+        config_id: The database ID for this configuration
+    """
     conn = get_connection()
     try:
         # Copy params to avoid modifying the original
         params_copy = params.copy()
         
-        # Extract subset info for logging
+        # Extract info for logging
         subset_strategy = params_copy.get('subset_strategy', 'artist_first5')
         subset_size = params_copy.get('subset_size', 250)
+        runtime = params_copy.get('runtime_seconds')
+        
+        # Extract the name field for logging but then remove it 
+        # since it's not stored in the database
+        config_name = params_copy.get('name', 'unnamed')
+        if 'name' in params_copy:
+            params_copy.pop('name')
         
         # Handle special fields that need JSON serialization
         for key in ['metric_kwds', 'densmap_kwds']:
             if key in params_copy and params_copy[key]:
                 params_copy[key] = json.dumps(params_copy[key])
         
-        # Extract fields for the config table and construct SQL parts
+        # Define the config table
         config_table = f"{method}_configs"
-        fields = []
-        placeholders = []
+        
+        # First check if this exact configuration already exists
+        # We'll build a query that matches all parameter values
+        query = f"SELECT config_id FROM {config_table} WHERE "
+        conditions = []
+        values = []
+        
+        # Exclude runtime_seconds and timestamps from the uniqueness check
+        for key, value in params_copy.items():
+            if key not in ['runtime_seconds', 'created_at']:
+                conditions.append(f"{key} = ?")
+                values.append(value)
+        
+        query += " AND ".join(conditions)
+        
+        # Check for existing config
+        cursor = conn.execute(query, values)
+        result = cursor.fetchone()
+        
+        if result:
+            # Configuration exists - update it
+            config_id = result[0]
+            
+            # Update the runtime and timestamp
+            if runtime is not None:
+                conn.execute(
+                    f"UPDATE {config_table} SET runtime_seconds = ?, created_at = CURRENT_TIMESTAMP WHERE config_id = ?", 
+                    (runtime, config_id)
+                )
+                conn.commit()
+            
+            print(f"CONFIG_UPDATED: {method} config #{config_id} ({config_name}) updated with new runtime ({runtime:.2f}s)")
+            
+            # Delete old points
+            points_deleted = conn.execute(
+                "DELETE FROM projection_points WHERE config_id = ?", 
+                (config_id,)
+            ).rowcount
+            
+            conn.commit()
+            if points_deleted > 0:
+                print(f"POINTS_DELETED: {points_deleted} old points removed for config #{config_id}")
+            
+            return config_id
+            
+        else:
+            # No existing config - create new one
+            fields = []
+            placeholders = []
+            values = []
+            
+            for key, value in params_copy.items():
+                fields.append(key)
+                placeholders.append('?')
+                values.append(value)
+            
+            # Create a new record
+            sql = f"INSERT INTO {config_table} ({', '.join(fields)}) VALUES ({', '.join(placeholders)})"
+            cursor = conn.execute(sql, values)
+            config_id = cursor.lastrowid
+            conn.commit()
+            
+            print(f"CONFIG_CREATED: New {method} config #{config_id} from '{config_name}' ({subset_strategy}, size={subset_size})")
+            return config_id
+            
+    except sqlite3.IntegrityError as e:
+        # This should only happen if there's a race condition - extremely unlikely
+        print(f"CONFIG_INTEGRITY_ERROR: {e} - retrying with SELECT")
+        conn.rollback()
+        
+        # Try again with just a SELECT
+        query = f"SELECT config_id FROM {config_table} WHERE "
+        conditions = []
         values = []
         
         for key, value in params_copy.items():
-            fields.append(key)
-            placeholders.append('?')
-            values.append(value)
+            if key not in ['runtime_seconds', 'created_at']:
+                conditions.append(f"{key} = ?")
+                values.append(value)
         
-        # Construct and execute SQL
-        sql = f"INSERT INTO {config_table} ({', '.join(fields)}) VALUES ({', '.join(placeholders)})"
-        cursor = conn.execute(sql, values)
-        config_id = cursor.lastrowid
-        conn.commit()
+        query += " AND ".join(conditions)
         
-        print(f"CONFIG_SAVED: {method} config #{config_id} (strategy={subset_strategy}, size={subset_size})")
-        return config_id
+        cursor = conn.execute(query, values)
+        result = cursor.fetchone()
+        
+        if result:
+            config_id = result[0]
+            print(f"CONFIG_FOUND: Found existing {method} config #{config_id} after integrity error")
+            return config_id
+        else:
+            raise
+            
     except Exception as e:
         print(f"CONFIG_ERROR: Failed to save {method} config: {e}")
         conn.rollback()
@@ -179,7 +273,7 @@ def save_config(method, params):
     finally:
         conn.close()
 
-def save_points(config_id, method, points_data):
+def save_points(config_id, points_data):
     """Save projection points in a transaction"""
     conn = get_connection()
     try:
@@ -188,11 +282,10 @@ def save_points(config_id, method, points_data):
         count = 0
         for point in points_data:
             conn.execute("""
-                INSERT INTO projection_points (config_id, method, filename, artist, x, y)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO projection_points (config_id, filename, artist, x, y)
+                VALUES (?, ?, ?, ?, ?)
             """, (
                 config_id, 
-                method,
                 point['filename'],
                 point['artist'],
                 float(point['x']), 
@@ -201,11 +294,11 @@ def save_points(config_id, method, points_data):
             count += 1
         
         conn.commit()
-        print(f"POINTS_SAVED: {count} points for {method} config #{config_id}")
+        print(f"POINTS_SAVED: {count} points for config #{config_id}")
         return True
     except Exception as e:
         conn.rollback()
-        print(f"POINTS_ERROR: Failed to save points for {method} config #{config_id}: {e}")
+        print(f"POINTS_ERROR: Failed to save points for config #{config_id}: {e}")
         return False
     finally:
         conn.close()
@@ -261,6 +354,282 @@ def check_db_tables():
     finally:
         conn.close()
 
+def drop_tables(exclude=None):
+    """Drop all tables except those explicitly excluded"""
+    if exclude is None:
+        exclude = ['embeddings', 'artists']
+    
+    print("DB_DROP: Dropping tables...")
+    conn = get_connection()
+    try:
+        # Get all tables
+        tables = conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
+        table_names = [t[0] for t in tables]
+        
+        # Filter out excluded tables
+        tables_to_drop = [table for table in table_names if table not in exclude]
+        
+        # Drop each table
+        for table in tables_to_drop:
+            print(f"DB_DROP: Dropping table {table}")
+            conn.execute(f"DROP TABLE IF EXISTS {table}")
+        
+        conn.commit()
+        print(f"DB_DROP: Successfully dropped {len(tables_to_drop)} tables")
+        return True
+    except Exception as e:
+        conn.rollback()
+        print(f"DB_DROP_ERROR: Failed to drop tables: {e}")
+        return False
+    finally:
+        conn.close()
+
+def init_projection_points_table():
+    """Create projection points table"""
+    print("DB_INIT: Creating projection_points table...")
+    conn = get_connection()
+    try:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS projection_points (
+                point_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                config_id INTEGER NOT NULL,
+                filename TEXT NOT NULL,
+                artist TEXT NOT NULL, 
+                x REAL NOT NULL,
+                y REAL NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        conn.commit()
+        print("DB_INIT: projection_points table created successfully")
+        return True
+    except Exception as e:
+        conn.rollback()
+        print(f"DB_INIT_ERROR: Failed to create projection_points table: {e}")
+        return False
+    finally:
+        conn.close()
+
+def init_umap_table():
+    """Create UMAP configuration table with uniqueness constraints"""
+    print("DB_INIT: Creating umap_configs table...")
+    conn = get_connection()
+    try:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS umap_configs (
+                config_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                n_neighbors INTEGER,
+                n_components INTEGER DEFAULT 2,
+                min_dist REAL,
+                metric TEXT,
+                metric_kwds TEXT,  -- JSON string
+                a REAL,
+                b REAL,
+                random_state INTEGER,
+                subset_strategy TEXT,
+                subset_size INTEGER,
+                runtime_seconds REAL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                
+                -- Ensure uniqueness of configuration parameters
+                UNIQUE(n_neighbors, n_components, min_dist, metric, random_state, subset_strategy, subset_size)
+            )
+        """)
+        conn.commit()
+        print("DB_INIT: umap_configs table created successfully")
+        return True
+    except Exception as e:
+        conn.rollback()
+        print(f"DB_INIT_ERROR: Failed to create umap_configs table: {e}")
+        return False
+    finally:
+        conn.close()
+
+def init_tsne_table():
+    """Create t-SNE configuration table with uniqueness constraints"""
+    print("DB_INIT: Creating tsne_configs table...")
+    conn = get_connection()
+    try:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS tsne_configs (
+                config_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                n_components INTEGER DEFAULT 2,
+                perplexity REAL,
+                early_exaggeration REAL,
+                learning_rate REAL,
+                n_iter INTEGER,
+                n_iter_without_progress INTEGER,
+                min_grad_norm REAL,
+                metric TEXT,
+                random_state INTEGER,
+                subset_strategy TEXT,
+                subset_size INTEGER,
+                runtime_seconds REAL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                
+                -- Ensure uniqueness of configuration parameters
+                UNIQUE(n_components, perplexity, early_exaggeration, learning_rate, n_iter, 
+                       n_iter_without_progress, min_grad_norm, metric, random_state, 
+                       subset_strategy, subset_size)
+            )
+        """)
+        conn.commit()
+        print("DB_INIT: tsne_configs table created successfully")
+        return True
+    except Exception as e:
+        conn.rollback()
+        print(f"DB_INIT_ERROR: Failed to create tsne_configs table: {e}")
+        return False
+    finally:
+        conn.close()
+
+def init_isomap_table():
+    """Create ISOMAP configuration table with uniqueness constraints"""
+    print("DB_INIT: Creating isomap_configs table...")
+    conn = get_connection()
+    try:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS isomap_configs (
+                config_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                n_neighbors INTEGER,
+                n_components INTEGER DEFAULT 2,
+                subset_strategy TEXT,
+                subset_size INTEGER,
+                runtime_seconds REAL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                
+                -- Ensure uniqueness of configuration parameters
+                UNIQUE(n_neighbors, n_components, subset_strategy, subset_size)
+            )
+        """)
+        conn.commit()
+        print("DB_INIT: isomap_configs table created successfully")
+        return True
+    except Exception as e:
+        conn.rollback()
+        print(f"DB_INIT_ERROR: Failed to create isomap_configs table: {e}")
+        return False
+    finally:
+        conn.close()
+
+def init_lle_table():
+    """Create LLE configuration table with uniqueness constraints"""
+    print("DB_INIT: Creating lle_configs table...")
+    conn = get_connection()
+    try:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS lle_configs (
+                config_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                n_neighbors INTEGER,
+                n_components INTEGER DEFAULT 2,
+                random_state INTEGER,
+                subset_strategy TEXT,
+                subset_size INTEGER,
+                runtime_seconds REAL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                
+                -- Ensure uniqueness of configuration parameters
+                UNIQUE(n_neighbors, n_components, random_state, subset_strategy, subset_size)
+            )
+        """)
+        conn.commit()
+        print("DB_INIT: lle_configs table created successfully")
+        return True
+    except Exception as e:
+        conn.rollback()
+        print(f"DB_INIT_ERROR: Failed to create lle_configs table: {e}")
+        return False
+    finally:
+        conn.close()
+
+def init_spectral_table():
+    """Create Spectral configuration table with uniqueness constraints"""
+    print("DB_INIT: Creating spectral_configs table...")
+    conn = get_connection()
+    try:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS spectral_configs (
+                config_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                n_neighbors INTEGER,
+                n_components INTEGER DEFAULT 2,
+                random_state INTEGER,
+                subset_strategy TEXT,
+                subset_size INTEGER,
+                runtime_seconds REAL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                
+                -- Ensure uniqueness of configuration parameters
+                UNIQUE(n_neighbors, n_components, random_state, subset_strategy, subset_size)
+            )
+        """)
+        conn.commit()
+        print("DB_INIT: spectral_configs table created successfully")
+        return True
+    except Exception as e:
+        conn.rollback()
+        print(f"DB_INIT_ERROR: Failed to create spectral_configs table: {e}")
+        return False
+    finally:
+        conn.close()
+
+def init_mds_table():
+    """Create MDS configuration table with uniqueness constraints"""
+    print("DB_INIT: Creating mds_configs table...")
+    conn = get_connection()
+    try:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS mds_configs (
+                config_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                n_components INTEGER DEFAULT 2,
+                random_state INTEGER,
+                subset_strategy TEXT,
+                subset_size INTEGER,
+                runtime_seconds REAL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                
+                -- Ensure uniqueness of configuration parameters
+                UNIQUE(n_components, random_state, subset_strategy, subset_size)
+            )
+        """)
+        conn.commit()
+        print("DB_INIT: mds_configs table created successfully")
+        return True
+    except Exception as e:
+        conn.rollback()
+        print(f"DB_INIT_ERROR: Failed to create mds_configs table: {e}")
+        return False
+    finally:
+        conn.close()
+
+def init_db():
+    """Initialize all method-specific tables"""
+    print("DB_INIT: Initializing database schema...")
+    
+    # Map of initialization functions
+    init_functions = {
+        "projection_points": init_projection_points_table,
+        "umap": init_umap_table,
+        "tsne": init_tsne_table,
+        "isomap": init_isomap_table,
+        "lle": init_lle_table,
+        "spectral": init_spectral_table,
+        "mds": init_mds_table
+    }
+    
+    # Initialize each table
+    success = True
+    for name, func in init_functions.items():
+        if not func():
+            print(f"DB_INIT_ERROR: Failed to initialize {name} table")
+            success = False
+    
+    if success:
+        print("DB_INIT: All tables created successfully")
+    else:
+        print("DB_INIT_WARNING: Some tables failed to initialize")
+    
+    return success
+
 def count_configs_and_points():
     """Count configurations and projection points in the database"""
     conn = get_connection()
@@ -277,11 +646,16 @@ def count_configs_and_points():
             # Count configs
             config_count = conn.execute(f"SELECT COUNT(*) FROM {table[0]}").fetchone()[0]
             
-            # Count points for this method
-            points_count = conn.execute(
-                "SELECT COUNT(*) FROM projection_points WHERE method = ?", 
-                (method,)
-            ).fetchone()[0]
+            # Count points for configs from this method
+            points_query = f"""
+                SELECT COUNT(*) FROM projection_points pp
+                JOIN {table[0]} c ON pp.config_id = c.config_id
+            """
+            try:
+                points_count = conn.execute(points_query).fetchone()[0]
+            except sqlite3.OperationalError:
+                # If no configs or points, set to 0
+                points_count = 0
             
             counts[method] = {
                 'configs': config_count,
@@ -307,3 +681,13 @@ if __name__ != "__main__":
         check_db_tables()
     else:
         print(f"DB_WARNING: Database file not found at {DB_PATH}")
+
+# Run database initialization when executed directly
+if __name__ == "__main__":
+    if os.path.exists(DB_PATH):
+        print(f"DB_INFO: Found database at {DB_PATH}")
+        drop_tables()  # Drop all tables except embeddings and artists
+        init_db()      # Create all tables with decoupled schemas
+        check_db_tables()
+    else:
+        print(f"DB_ERROR: Database file not found at {DB_PATH}")

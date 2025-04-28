@@ -29,8 +29,7 @@ def check_files():
         "db.py",
         "run.py",
         "validate.py",
-        "agent_helper.py",
-        "configs/configs.yaml",
+        "configs.yaml",
         "methods/umap.py",
         "methods/tsne.py",
         "methods/isomap.py",
@@ -102,7 +101,7 @@ def check_database():
 
 def load_configs():
     """Load DR configurations"""
-    config_path = "configs/configs.yaml"
+    config_path = "configs.yaml"
     
     if not os.path.exists(config_path):
         return {
@@ -153,15 +152,15 @@ def get_run_status():
             
             try:
                 # Count configs
-                configs = conn.execute(f"SELECT config_id, subset_strategy, subset_size, runtime_seconds FROM {config_table}").fetchall()
+                configs = conn.execute(f"SELECT config_id, name, subset_strategy, subset_size, runtime_seconds FROM {config_table}").fetchall()
                 
                 # Get points for each config
                 config_points = defaultdict(int)
                 for config in configs:
                     config_id = config['config_id']
                     points_count = conn.execute(
-                        "SELECT COUNT(*) FROM projection_points WHERE method = ? AND config_id = ?", 
-                        (method, config_id)
+                        "SELECT COUNT(*) FROM projection_points WHERE config_id = ?", 
+                        (config_id,)
                     ).fetchone()[0]
                     config_points[config_id] = points_count
                 
@@ -171,6 +170,7 @@ def get_run_status():
                     "total_points": sum(config_points.values()),
                     "details": [{
                         "config_id": c['config_id'],
+                        "name": c['name'],
                         "subset_strategy": c['subset_strategy'],
                         "subset_size": c['subset_size'],
                         "runtime_seconds": c['runtime_seconds'],
@@ -206,50 +206,89 @@ def suggest_next_run():
             "error": "Could not get run status"
         }
     
-    # Find methods with missing runs
+    # Find methods that haven't been run yet
+    methods_not_run = []
+    for method in configs['configs'].keys():
+        if method not in runs or runs[method].get('total_points', 0) == 0:
+            methods_not_run.append(method)
+    
+    # Prioritize methods that haven't been run yet
     suggestions = []
     
+    # First suggest methods that haven't been run at all
+    for method in methods_not_run:
+        for config in configs['configs'][method]:
+            config_name = config.get('name')
+            if config_name and (config_name.lower() == 'fast' or config_name.lower() == 'basic'):
+                suggestions.append({
+                    "method": method,
+                    "config": config_name,
+                    "reason": f"Method {method} has not been run yet",
+                    "priority": "high"
+                })
+                break
+        else:
+            # If no 'fast' or 'basic' config, suggest the first one
+            if configs['configs'][method]:
+                config_name = configs['configs'][method][0].get('name')
+                if config_name:
+                    suggestions.append({
+                        "method": method,
+                        "config": config_name,
+                        "reason": f"Method {method} has not been run yet",
+                        "priority": "high"
+                    })
+    
+    # Then suggest new configurations for methods that have been run
     for method, method_configs in configs['configs'].items():
+        # Skip methods that haven't been run (already handled above)
+        if method in methods_not_run:
+            continue
+            
         # Skip if method has an error
         if method in runs and 'error' in runs[method]:
             continue
             
-        # Get completed config IDs
-        completed_configs = set()
+        # Get completed config names
+        completed_config_names = set()
         if method in runs:
             for detail in runs[method].get('details', []):
                 if detail.get('points', 0) > 0:
-                    completed_configs.add(detail.get('config_id'))
+                    completed_config_names.add(detail.get('name', ''))
         
         # Find configs to run
-        for config_name in method_configs:
-            # Check if this is a new config or has no points
-            is_new = True
-            for detail in runs.get(method, {}).get('details', []):
-                if detail.get('subset_strategy') == method_configs[config_name].get('subset_strategy') and \
-                   detail.get('subset_size') == method_configs[config_name].get('subset_size'):
-                    is_new = False
-                    break
-            
-            if is_new:
-                suggestions.append({
-                    "method": method,
-                    "config": config_name,
-                    "reason": "New configuration"
-                })
+        for config in method_configs:
+            config_name = config.get('name')
+            if not config_name or config_name in completed_config_names:
+                continue
+                
+            suggestions.append({
+                "method": method,
+                "config": config_name,
+                "reason": f"New configuration for {method}",
+                "priority": "medium"
+            })
     
-    # Handle empty case - look for fast runs
+    # If no suggestions, suggest re-running a different subset strategy
     if not suggestions:
-        for method in ['umap', 'isomap']:
+        # Look for fast/basic configs with a different subset strategy
+        for method in ['tsne', 'umap', 'isomap']:
             if method in configs['configs']:
-                fast_configs = [c for c in configs['configs'][method] 
-                               if c.lower().startswith('fast') or c.lower() == 'basic']
-                if fast_configs:
-                    suggestions.append({
-                        "method": method,
-                        "config": fast_configs[0],
-                        "reason": "No new configs, suggesting fast run"
-                    })
+                for config in configs['configs'][method]:
+                    config_name = config.get('name', '')
+                    if config_name.lower() == 'fast' or config_name.lower() == 'basic':
+                        # Modify the config to use a different subset strategy
+                        suggestions.append({
+                            "method": method,
+                            "config": config_name,
+                            "reason": "Retry with random subset strategy",
+                            "priority": "low",
+                            "modify": {
+                                "subset_strategy": "random",
+                                "subset_size": 300
+                            }
+                        })
+                        break
     
     return {
         "suggestions": suggestions

@@ -48,18 +48,18 @@ def validate_run(method, config_id):
                    SUM(CASE WHEN x IS NULL OR y IS NULL THEN 1 ELSE 0 END) as missing_coords,
                    COUNT(DISTINCT filename) as unique_files
             FROM projection_points 
-            WHERE config_id = ? AND method = ?
+            WHERE config_id = ?
         """
-        points = conn.execute(points_query, (config_id, method)).fetchone()
+        points = conn.execute(points_query, (config_id,)).fetchone()
         
         # Get summary of points by artist
         artist_query = """
             SELECT artist, COUNT(*) as count
             FROM projection_points
-            WHERE config_id = ? AND method = ?
+            WHERE config_id = ?
             GROUP BY artist
         """
-        artist_counts = conn.execute(artist_query, (config_id, method)).fetchall()
+        artist_counts = conn.execute(artist_query, (config_id,)).fetchall()
         artist_summary = {row['artist']: row['count'] for row in artist_counts}
         
         validation_result = {
@@ -129,19 +129,29 @@ def check_db_consistency():
         
         # Check projection_points table
         try:
+            # Count points per method
             points_query = """
-                SELECT method, COUNT(*) as count
-                FROM projection_points
-                GROUP BY method
+                SELECT m.name as method_table, COUNT(pp.point_id) as count
+                FROM projection_points pp
+                JOIN (
+                    SELECT 'umap_configs' as name, config_id FROM umap_configs
+                    UNION SELECT 'tsne_configs' as name, config_id FROM tsne_configs
+                    UNION SELECT 'isomap_configs' as name, config_id FROM isomap_configs
+                    UNION SELECT 'lle_configs' as name, config_id FROM lle_configs
+                    UNION SELECT 'spectral_configs' as name, config_id FROM spectral_configs
+                    UNION SELECT 'mds_configs' as name, config_id FROM mds_configs
+                ) m ON pp.config_id = m.config_id
+                GROUP BY m.name
             """
             points_counts = conn.execute(points_query).fetchall()
             
             for row in points_counts:
-                print(f"VALIDATE_DB: {row['method']} has {row['count']} projection points")
+                method = row['method_table'].replace('_configs', '')
+                print(f"VALIDATE_DB: {method} has {row['count']} projection points")
                 
             # Check for orphaned points
             orphaned_query = """
-                SELECT pp.method, COUNT(*) as count
+                SELECT pp.config_id, COUNT(*) as count
                 FROM projection_points pp
                 LEFT JOIN (
                     SELECT 'umap' as method, config_id FROM umap_configs
@@ -150,14 +160,14 @@ def check_db_consistency():
                     UNION SELECT 'lle' as method, config_id FROM lle_configs
                     UNION SELECT 'spectral' as method, config_id FROM spectral_configs
                     UNION SELECT 'mds' as method, config_id FROM mds_configs
-                ) configs ON pp.config_id = configs.config_id AND pp.method = configs.method
+                ) configs ON pp.config_id = configs.config_id
                 WHERE configs.config_id IS NULL
-                GROUP BY pp.method
+                GROUP BY pp.config_id
             """
             orphaned = conn.execute(orphaned_query).fetchall()
             
             for row in orphaned:
-                print(f"VALIDATE_DB_ERROR: {row['count']} orphaned points for {row['method']}")
+                print(f"VALIDATE_DB_ERROR: {row['count']} orphaned points for config_id {row['config_id']}")
             
             return len(orphaned) == 0
             

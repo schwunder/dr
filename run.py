@@ -21,7 +21,7 @@ EXECUTION_STATUS = "idle"  # idle, running, success, error
 
 def load_configs():
     """Load all method configs from YAML"""
-    config_path = os.path.join(os.path.dirname(__file__), 'configs', 'configs.yaml')
+    config_path = os.path.join(os.path.dirname(__file__), 'configs.yaml')
     try:
         with open(config_path, 'r') as f:
             configs = yaml.safe_load(f)
@@ -62,7 +62,17 @@ def capture_output(func, *args, **kwargs):
         }
 
 def run_dr_method(method, config_name):
-    """Run a specific DR method with the named config"""
+    """Run a specific DR method with the named config
+    
+    Args:
+        method: The DR method name (umap, tsne, etc.)
+        config_name: The configuration name from configs.yaml (e.g., 'fast', 'detail')
+                         
+    Note:
+        The config_name is used to look up parameters in the YAML file.
+        If an identical configuration already exists in the database,
+        it will be updated with new results rather than creating a duplicate.
+    """
     global CURRENT_METHOD, CURRENT_CONFIG, CURRENT_CONFIG_ID, EXECUTION_STATUS
     
     CURRENT_METHOD = method
@@ -70,27 +80,36 @@ def run_dr_method(method, config_name):
     EXECUTION_STATUS = "running"
     
     print("\n" + "="*80)
-    print_status("start", f"Running {method} with config '{config_name}'")
+    print_status("start", f"Running {method} with config '{config_name}' from YAML")
     print("="*80)
     
-    # Load configs
+    # Load configs from YAML
     all_configs = load_configs()
     
     if method not in all_configs:
-        print_status("error", f"Method '{method}' not found in configs")
+        print_status("error", f"Method '{method}' not found in configs.yaml")
         EXECUTION_STATUS = "error"
         return False
     
-    if config_name not in all_configs[method]:
-        print_status("error", f"Config '{config_name}' not found for method '{method}'")
+    # Find config by name in the list
+    config = None
+    for cfg in all_configs[method]:
+        if cfg.get('name') == config_name:
+            config = cfg
+            break
+    
+    if config is None:
+        print_status("error", f"Config '{config_name}' not found for method '{method}' in configs.yaml")
         EXECUTION_STATUS = "error"
         return False
     
-    # Get config params
-    config = all_configs[method][config_name]
-    print_status("config", json.dumps(config))
+    # Get config params from YAML
+    print_status("config", f"Using template from configs.yaml: {json.dumps(config)}")
     
-    # Get subset data
+    # Store the name for logging purposes but don't send to save_config
+    config_name = config.get('name', 'unnamed')
+    
+    # Get subset data based on configuration
     subset_strategy = config.get('subset_strategy', 'artist_first5')
     subset_size = config.get('subset_size', 250)
     seed = config.get('random_state', 42)
@@ -159,17 +178,18 @@ def run_dr_method(method, config_name):
         runtime = time.time() - start_time
         print_status("timing", f"Completed in {runtime:.2f} seconds")
         
-        # Save config
-        print_status("save", f"Saving {method} configuration...")
+        # Save or update configuration in database
+        print_status("save", f"Saving configuration to database...")
         config_with_runtime = config.copy()
         config_with_runtime['runtime_seconds'] = runtime
+        
+        # Will update if identical config exists, otherwise create new
         config_id = db.save_config(method, config_with_runtime)
         CURRENT_CONFIG_ID = config_id
-        print_status("save", f"Saved {method} config with ID: {config_id}")
         
-        # Save points
+        # Save the new points
         print_status("save", f"Saving {len(points_data)} projected points...")
-        success = db.save_points(config_id, method, points_data)
+        success = db.save_points(config_id, points_data)
         if success:
             print_status("save", f"Saved {len(points_data)} points to database")
         else:
@@ -178,10 +198,10 @@ def run_dr_method(method, config_name):
             return False
         
         # Validate the run
-        print_status("validate", f"Validating {method} run with config #{config_id}...")
+        print_status("validate", f"Validating {method} run with database ID #{config_id}...")
         os.system(f"python validate.py {method} {config_id}")
         
-        print_status("complete", f"Successfully completed {method} with config '{config_name}'")
+        print_status("complete", f"Successfully completed {method} with config '{config_name}' (database ID: {config_id})")
         EXECUTION_STATUS = "success"
         return config_id
     
@@ -197,10 +217,12 @@ def run_all():
     results = {}
     
     for method in all_configs:
-        # Take the first config for each method
-        config_name = next(iter(all_configs[method].keys()))
-        config_id = run_dr_method(method, config_name)
-        results[method] = config_id
+        if all_configs[method]:  # Check if there are configs for this method
+            # Take the first config for each method
+            config_name = all_configs[method][0].get('name')
+            if config_name:
+                config_id = run_dr_method(method, config_name)
+                results[method] = config_id
     
     print("\n" + "="*80)
     print_status("summary", "Run complete")
@@ -222,9 +244,9 @@ def get_method_status():
     }
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Run dimensionality reduction methods")
+    parser = argparse.ArgumentParser(description="Run dimensionality reduction methods using templates from configs.yaml")
     parser.add_argument("--method", help="DR method to run (umap, tsne, etc.)")
-    parser.add_argument("--config", help="Config name to use")
+    parser.add_argument("--config", help="Configuration name from configs.yaml (e.g., 'fast', 'detail')")
     parser.add_argument("--all", action="store_true", help="Run one config from each method")
     parser.add_argument("--status", action="store_true", help="Show current execution status")
     

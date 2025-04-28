@@ -1,16 +1,16 @@
 # All dimensionality reduction configurations
 
 umap:
-  fast:
+  - name: fast
     n_neighbors: 10
     min_dist: 0.1
     n_components: 2
     metric: "euclidean"
     random_state: 42
-    subset_strategy: "artist_first5"
-    subset_size: 250
+    subset_strategy: "random"
+    subset_size: 150
 
-  detail:
+  - name: detail
     n_neighbors: 20
     min_dist: 0.05
     n_components: 2
@@ -20,33 +20,41 @@ umap:
     subset_size: 250
 
 tsne:
-  fast:
-    perplexity: 20
+  - name: fast
+    perplexity: 25
     n_components: 2
     random_state: 42
     learning_rate: 200.0
-    n_iter: 500  # Fewer iterations for faster results
+    n_iter: 500
+    early_exaggeration: 12.0
+    n_iter_without_progress: 300
+    min_grad_norm: 0.0000001
+    metric: "euclidean"
     subset_strategy: "artist_first5"
     subset_size: 250
 
-  detail:
-    perplexity: 30
+  - name: detail
+    perplexity: 35
     n_components: 2
     random_state: 42
     learning_rate: 200.0
     n_iter: 1000
+    early_exaggeration: 12.0
+    n_iter_without_progress: 300
+    min_grad_norm: 0.0000001
+    metric: "euclidean"
     subset_strategy: "artist_first5"
     subset_size: 250
 
 isomap:
-  basic:
+  - name: basic
     n_neighbors: 5
     n_components: 2
     subset_strategy: "artist_first5"
     subset_size: 250
 
 lle:
-  basic:
+  - name: basic
     n_neighbors: 15
     n_components: 2
     random_state: 42
@@ -54,7 +62,7 @@ lle:
     subset_size: 250
 
 spectral:
-  basic:
+  - name: basic
     n_neighbors: 10
     n_components: 2
     random_state: 42
@@ -62,7 +70,7 @@ spectral:
     subset_size: 250
 
 mds:
-  basic:
+  - name: basic
     n_components: 2
     random_state: 42
     subset_strategy: "artist_first5"
