@@ -6,6 +6,48 @@ A Python pipeline for running and tracking dimensionality reduction (DR) methods
 
 ---
 
+## Environment Setup (Apple Silicon/ARM, Python 3.11)
+
+**Recommended: Use Python 3.11 and Apple Silicon (ARM) natively.**
+
+### 1. Create a fresh virtual environment
+
+```sh
+rm -rf .venv
+/opt/homebrew/bin/python3.11 -m venv .venv
+source .venv/bin/activate
+pip install --upgrade pip setuptools wheel
+```
+
+### 2. Install all dependencies
+
+```sh
+pip install numpy scipy matplotlib pandas scikit-learn umap-learn openTSNE phate scprep evomap pyyaml
+```
+
+### 3. If you encounter architecture errors with PHATE/s-gd2 (e.g. 'mach-o file, but is an incompatible architecture'):
+
+Build s-gd2 from source (requires Xcode command line tools):
+
+```sh
+xcode-select --install  # Only needed once per machine
+pip uninstall -y s-gd2
+pip install --no-binary=:all: --force-reinstall s-gd2
+```
+
+This will build a native ARM wheel for s-gd2 and resolve PHATE architecture issues.
+
+### 4. Troubleshooting binary incompatibility (e.g. 'numpy.dtype size changed')
+
+If you see errors about numpy/pandas/scikit-learn binary incompatibility:
+
+```sh
+pip cache purge
+pip install --force-reinstall --upgrade numpy pandas scikit-learn
+```
+
+---
+
 ## Database Tables
 
 ### 1. `embeddings`
@@ -209,6 +251,82 @@ Below are example outputs for each DR method after running the pipeline, includi
 - Config: | 1 | artist_first5 | 250 | 2 | 42 |
 - Projection: | 1901 | dictlearn | 1 | Albrecht_Durer_1.avif | Albrecht Durer | 0.5678 | -0.2345 |
 - Validation: `dictlearn cfg 1: 250/250 unique filenames`
+
+### TriMap
+
+TriMap is a dimensionality reduction method that preserves global structure using triplet constraints. It often provides a better global view of the data than t-SNE or UMAP.
+
+#### Installation
+
+TriMap requires a few extra dependencies. Install them with:
+
+```sh
+pip install trimap annoy numba
+```
+
+If you have trouble installing Annoy on macOS, try:
+
+```sh
+pip install git+https://github.com/sutao/annoy.git@master
+```
+
+#### Configuration
+
+Add TriMap configs to `configs.yaml` (see example):
+
+```yaml
+trimap:
+  - name: fast
+    n_dims: 2
+    n_inliers: 12
+    n_outliers: 4
+    n_random: 3
+    distance: "euclidean"
+    weight_temp: 0.5
+    lr: 0.1
+    n_iters: 400
+    random_state: 42
+    opt_method: "dbd"
+    apply_pca: true
+    subset_strategy: "random"
+    subset_size: 150
+```
+
+#### Usage
+
+Run TriMap as you would any other method:
+
+```sh
+python run.py --method trimap --config fast
+```
+
+#### Validation
+
+Check for duplicate filenames in the projection:
+
+```sh
+python validate.py trimap 1
+# Output: trimap cfg 1: 150/150 unique filenames
+```
+
+#### Inspect Projection Points
+
+```sh
+sqlite3 art.sqlite "SELECT * FROM projection_points WHERE method='trimap' AND config_id=1 LIMIT 5;"
+# Example output:
+# | point_id | method | config_id | filename                   | artist            | x           | y           |
+# |----------|--------|-----------|----------------------------|-------------------|-------------|-------------|
+# | 10181    | trimap | 1         | Vincent_van_Gogh_113.avif  | Vincent van Gogh  | -88240.12   | 187205.64   |
+# | 10182    | trimap | 1         | Edvard_Munch_47.avif       | Edvard Munch      | 67817.87    | 12106.98    |
+# | 10183    | trimap | 1         | Titian_255.avif            | Titian            | 1219.86     | -2494.36    |
+# | 10184    | trimap | 1         | Georges_Seurat_29.avif     | Georges Seurat    | 3163.88     | -915.32     |
+# | 10185    | trimap | 1         | Francisco_Goya_137.avif    | Francisco Goya    | -230.11     | 750.09      |
+```
+
+#### Troubleshooting
+
+- If you see errors about missing columns, drop and re-init the `trimap_configs` table as with other methods.
+- For Annoy/Numba install issues, see TriMap's GitHub for platform-specific fixes.
 
 ---
 

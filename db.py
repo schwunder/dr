@@ -107,6 +107,27 @@ PARAM_COLS: Dict[str, List[str]] = {
         "n_components",
         "random_state"
     ],
+    "phate": [
+        "n_components",
+        "knn",
+        "decay",
+        "t",
+        "gamma",
+        "random_state"
+    ],
+    "trimap": [
+        "n_dims",
+        "n_inliers",
+        "n_outliers",
+        "n_random",
+        "distance",
+        "weight_temp",
+        "lr",
+        "n_iters",
+        "random_state",
+        "opt_method",
+        "apply_pca"
+    ],
 }
 
 @contextmanager

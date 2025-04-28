@@ -1,1 +1,5 @@
 *.sqlite
+/.venv
+/venv
+/__pycache__
+methods/__pycache__
