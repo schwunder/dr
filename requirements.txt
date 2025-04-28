@@ -4,3 +4,4 @@ openTSNE>=0.6.0
 pyyaml>=6.0
 psutil>=5.9.0
 sammon-mapping>=0.0.2
+evomap>=0.4.4

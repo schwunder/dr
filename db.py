@@ -42,6 +42,12 @@ PARAM_COLS: Dict[str, List[str]] = {
     "sammon": [
         "n", "display", "inputdist", "maxhalves", "maxiter", "tolfun", "init"
     ],
+    "sammon_sammon_random": [
+        "n", "display", "inputdist", "maxhalves", "maxiter", "tolfun", "init", "random_state"
+    ],
+    "sammon_random": [
+        "n_dims", "n_iter", "tol", "input_type", "random_state"
+    ],
 }
 
 @contextmanager
@@ -150,10 +156,16 @@ def upsert_config(
         if row:
             cfg_id = row["config_id"]
             # update runtime & random_state, then wipe old points
-            c.execute(
-                f"UPDATE {tbl} SET runtime=?, random_state=? WHERE config_id=?",
-                (runtime, params.get("random_state"), cfg_id)
-            )
+            if "random_state" in PARAM_COLS[method]:
+                c.execute(
+                    f"UPDATE {tbl} SET runtime=?, random_state=? WHERE config_id=?",
+                    (runtime, params.get("random_state"), cfg_id)
+                )
+            else:
+                c.execute(
+                    f"UPDATE {tbl} SET runtime=? WHERE config_id=?",
+                    (runtime, cfg_id)
+                )
             c.execute(
                 "DELETE FROM projection_points WHERE method=? AND config_id=?",
                 (method, cfg_id)

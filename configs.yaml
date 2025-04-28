@@ -105,25 +105,24 @@ mds:
     subset_strategy: "artist_first5"
     subset_size: 250
 
-sammon:
-  - name: fast
+sammon_sammon_random:
+  - name: test_random
     n: 2
     display: 0
     inputdist: raw
     maxhalves: 20
     maxiter: 500
     tolfun: 1e-9
-    init: pca
+    init: random
     subset_strategy: random
-    subset_size: 150
+    subset_size: 40
 
-  - name: detail
-    n: 2
-    display: 0
-    inputdist: raw
-    maxhalves: 30
-    maxiter: 1000
-    tolfun: 1e-10
-    init: pca
-    subset_strategy: artist_first5
-    subset_size: 250
+sammon_random:
+  - name: test_random
+    n_dims: 2
+    n_iter: 500
+    tol: 1e-9
+    input_type: vector
+    random_state: 42
+    subset_strategy: random
+    subset_size: 40
