@@ -39,12 +39,6 @@ PARAM_COLS: Dict[str, List[str]] = {
     "lle":      ["n_neighbors", "n_components", "random_state"],
     "spectral": ["n_neighbors", "n_components", "random_state"],
     "mds":      ["n_components", "random_state"],
-    "sammon": [
-        "n", "display", "inputdist", "maxhalves", "maxiter", "tolfun", "init"
-    ],
-    "sammon_sammon_random": [
-        "n", "display", "inputdist", "maxhalves", "maxiter", "tolfun", "init", "random_state"
-    ],
     "sammon_random": [
         "n_dims", "n_iter", "tol", "input_type", "random_state"
     ],

@@ -423,6 +423,16 @@ python validate.py spacemap <config_id>
 
 ---
 
+## ⚠️ Important Limitations and Warnings
+
+- **Only 2D projections are supported:**
+  - All DR configs must use `n_components: 2` (or `n_dims: 2` for methods like TriMap and Sammon). If you set `n_components` or `n_dims` to a value greater than 2, the pipeline will fail with a `ValueError: too many values to unpack (expected 2)`.
+  - If you need higher-dimensional projections, you must modify the pipeline to support them.
+- **Sammon mapping support:**
+  - Only the `sammon_random` method is supported and implemented. sammon and sammon_sammon_random are not implemented and should not be present in configs.yaml or db.py.
+
+---
+
 ## How to Extend
 
 - **Add a new DR method:**
@@ -431,6 +441,8 @@ python validate.py spacemap <config_id>
   2. Create a new file in `methods/` with a `run()` function.
   3. Add method configs to `configs.yaml`.
   4. (Re)initialize the DB if new columns are added.
+
+  _Note: Only 2D output is supported. All configs must use `n_components: 2` or `n_dims: 2`._
 
   _Example: To add NMF, add to `PARAM_COLS` in `db.py`:_
 
@@ -467,6 +479,13 @@ python validate.py spacemap <config_id>
 - **Validation:**  
   `validate.py <method> <config_id>` checks for duplicate filenames in projection points.  
   Output like `umap cfg 1: 150/150 unique filenames` means all points are unique.
+
+- **2D output only:**
+
+  - If you see `ValueError: too many values to unpack (expected 2)`, check your config for `n_components: 3` or similar. Only 2D output is supported.
+
+- **Sammon mapping:**
+  - Only `sammon_random` is supported. If you see `ModuleNotFoundError: No module named 'methods.sammon_sammon_random'`, remove or ignore any configs or schema entries for `sammon` or `sammon_sammon_random`.
 
 ---
 
