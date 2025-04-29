@@ -413,6 +413,36 @@ phate:
     random_state: 42
     subset_strategy: "artist_first5"
     subset_size: 250
+  # Practical config: higher knn, lower decay
+  - name: practical_2
+    n_components: 2
+    knn: 15
+    decay: 20
+    t: auto
+    gamma: 1
+    random_state: 123
+    subset_strategy: "random"
+    subset_size: 200
+  # Edge-case: very high knn, low gamma
+  - name: edge_high_knn
+    n_components: 2
+    knn: 50
+    decay: 40
+    t: auto
+    gamma: 0.1
+    random_state: 321
+    subset_strategy: "artist_first5"
+    subset_size: 250
+  # Edge-case: low decay, high gamma
+  - name: edge_low_decay
+    n_components: 2
+    knn: 5
+    decay: 2
+    t: auto
+    gamma: 1
+    random_state: 999
+    subset_strategy: "random"
+    subset_size: 100
 
 trimap:
   - name: fast
@@ -429,7 +459,6 @@ trimap:
     apply_pca: true
     subset_strategy: "random"
     subset_size: 150
-
   - name: detail
     n_dims: 2
     n_inliers: 20
@@ -444,6 +473,79 @@ trimap:
     apply_pca: true
     subset_strategy: "artist_first5"
     subset_size: 250
+  # SAFE: Only n_inliers changed from fast
+  - name: safe_inliers_16
+    n_dims: 2
+    n_inliers: 16
+    n_outliers: 4
+    n_random: 3
+    distance: "euclidean"
+    weight_temp: 0.5
+    lr: 0.1
+    n_iters: 400
+    random_state: 43
+    opt_method: "dbd"
+    apply_pca: true
+    subset_strategy: "random"
+    subset_size: 150
+  # SAFE: Only lr changed from fast
+  - name: safe_lr_0.05
+    n_dims: 2
+    n_inliers: 12
+    n_outliers: 4
+    n_random: 3
+    distance: "euclidean"
+    weight_temp: 0.5
+    lr: 0.05
+    n_iters: 400
+    random_state: 44
+    opt_method: "dbd"
+    apply_pca: true
+    subset_strategy: "random"
+    subset_size: 150
+  # The following configs are commented out due to segfaults:
+  # - name: practical_3
+  #   n_dims: 2
+  #   n_inliers: 30
+  #   n_outliers: 15
+  #   n_random: 10
+  #   distance: "cosine"
+  #   weight_temp: 0.7
+  #   lr: 0.08
+  #   n_iters: 600
+  #   random_state: 321
+  #   opt_method: "dbd"
+  #   apply_pca: true
+  #   subset_strategy: "random"
+  #   subset_size: 200
+  # - name: edge_high_inliers
+  #   n_dims: 2
+  #   n_inliers: 50
+  #   n_outliers: 1
+  #   n_random: 5
+  #   distance: "euclidean"
+  #   weight_temp: 0.3
+  #   lr: 0.05
+  #   n_iters: 800
+  #   random_state: 888
+  #   opt_method: "dbd"
+  #   apply_pca: false
+  #   subset_strategy: "artist_first5"
+  #   subset_size: 250
+  # - name: edge_high_lr
+  #   n_dims: 2
+  #   n_inliers: 10
+  #   n_outliers: 5
+  #   n_random: 3
+  #   distance: "manhattan"
+  #   weight_temp: 1.0
+  #   lr: 0.5
+  #   n_iters: 100
+  #   random_state: 555
+  #   opt_method: "sgd"
+  #   apply_pca: true
+  #   subset_strategy: "random"
+  #   subset_size: 100
 
 spacemap:
   - name: fast
@@ -461,3 +563,51 @@ spacemap:
     num_plots: 50
     subset_strategy: artist_first5
     subset_size: 250
+  # Practical config: more epochs, different eta
+  - name: practical_2
+    n_components: 2
+    n_near_field: 25
+    n_middle_field: 60
+    d_local: 1
+    d_global: 4.0
+    eta: 0.8
+    n_epochs: 400
+    init: spectral
+    metric: euclidean
+    verbose: false
+    plot_results: false
+    num_plots: 50
+    subset_strategy: random
+    subset_size: 200
+  # Edge-case: very high n_near_field, low d_local
+  - name: edge_high_near
+    n_components: 2
+    n_near_field: 100
+    n_middle_field: 30
+    d_local: 0
+    d_global: 2.0
+    eta: 0.5
+    n_epochs: 150
+    init: random
+    metric: cosine
+    verbose: true
+    plot_results: true
+    num_plots: 10
+    subset_strategy: artist_first5
+    subset_size: 250
+  # Edge-case: very low eta, high d_global
+  - name: edge_low_eta
+    n_components: 2
+    n_near_field: 10
+    n_middle_field: 80
+    d_local: 2
+    d_global: 10.0
+    eta: 0.01
+    n_epochs: 300
+    init: spectral
+    metric: euclidean
+    verbose: false
+    plot_results: false
+    num_plots: 20
+    subset_strategy: random
+    subset_size: 100
