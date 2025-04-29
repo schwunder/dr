@@ -186,6 +186,31 @@ def init_schema() -> None:
         );""")
     with conn() as c:
         c.executescript("\n".join(stmts))
+    # Add viz_config and viz_points tables and indexes
+    with conn() as c:
+        c.executescript("""
+        CREATE TABLE IF NOT EXISTS viz_config (
+            viz_id      INTEGER PRIMARY KEY AUTOINCREMENT,
+            method      TEXT    NOT NULL,
+            config_id   INTEGER NOT NULL,
+            low_res     TEXT    NOT NULL,
+            point_ids   BLOB    NOT NULL,
+            created_at  TEXT    DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE IF NOT EXISTS viz_points (
+            viz_id      INTEGER  NOT NULL,
+            point_id    INTEGER  NOT NULL,
+            viz_x       INTEGER  NOT NULL,
+            viz_y       INTEGER  NOT NULL,
+            PRIMARY KEY (viz_id, point_id),
+            FOREIGN KEY (viz_id)   REFERENCES viz_config(viz_id),
+            FOREIGN KEY (point_id) REFERENCES projection_points(point_id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_viz_config_method 
+            ON viz_config(method, config_id);
+        CREATE INDEX IF NOT EXISTS idx_viz_points_viz
+            ON viz_points(viz_id);
+        """)
 
 def table_counts() -> dict:
     with conn() as c:
@@ -276,6 +301,79 @@ def save_points(method: str, cfg_id: int, meta: list, coords) -> None:
                 for m, (x, y) in zip(meta, coords)
             ]
         )
+
+# Fetches the config parameters for a given method and config_id.
+def get_dr_config(method: str, config_id: int) -> dict:
+    table = f"{method}_configs"
+    with conn() as c:
+        row = c.execute(
+            f"SELECT * FROM {table} WHERE config_id = ?", (config_id,)
+        ).fetchone()
+        if row is None:
+            raise ValueError(f"No config found for method={method}, config_id={config_id}")
+        return dict(row)
+
+# Fetches all projection points (point_id, filename, artist, x, y) for a given method and config_id.
+def get_projection_points(method: str, config_id: int) -> list:
+    with conn() as c:
+        rows = c.execute(
+            "SELECT point_id, filename, artist, x, y FROM projection_points WHERE method = ? AND config_id = ?",
+            (method, config_id)
+        ).fetchall()
+        return [tuple(r) for r in rows]  # Each row is (point_id, filename, artist, x, y)
+
+# Inserts a new viz_config row and returns the new viz_id.
+def insert_viz_config(method: str, low_res: str, config_id: int, point_ids_blob: bytes) -> int:
+    with conn() as c:
+        cur = c.execute(
+            "INSERT INTO viz_config (method, low_res, config_id, point_ids) VALUES (?, ?, ?, ?)",
+            (method, low_res, config_id, point_ids_blob)
+        )
+        return cur.lastrowid
+
+# Updates the low_res image path for a given viz_id.
+def update_viz_config_image(viz_id: int, low_res: str) -> None:
+    with conn() as c:
+        c.execute(
+            "UPDATE viz_config SET low_res = ? WHERE viz_id = ?",
+            (low_res, viz_id)
+        )
+
+# Fetches all metadata for a given viz_id from viz_config.
+def get_viz_config(viz_id: int) -> dict:
+    with conn() as c:
+        row = c.execute(
+            "SELECT * FROM viz_config WHERE viz_id = ?",
+            (viz_id,)
+        ).fetchone()
+        if row is None:
+            raise ValueError(f"No viz_config found for viz_id={viz_id}")
+        return dict(row)
+
+# Bulk inserts normalized points for a visualization into viz_points.
+def insert_viz_points(viz_id: int, points: list) -> None:
+    with conn() as c:
+        c.executemany(
+            "INSERT INTO viz_points (viz_id, point_id, viz_x, viz_y) VALUES (?, ?, ?, ?)",
+            [
+                (
+                    viz_id,
+                    p["point_id"],
+                    p["viz_x"],
+                    p["viz_y"]
+                )
+                for p in points
+            ]
+        )
+
+# Fetches all points (with normalized coordinates) for a given viz_id from viz_points.
+def get_viz_points(viz_id: int) -> list:
+    with conn() as c:
+        rows = c.execute(
+            "SELECT * FROM viz_points WHERE viz_id = ?",
+            (viz_id,)
+        ).fetchall()
+        return [dict(r) for r in rows]
 
 # auto-init
 init_schema()
