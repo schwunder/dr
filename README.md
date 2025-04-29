@@ -479,8 +479,6 @@ python validate.py spacemap <config_id>
 - **t-SNE now uses [openTSNE](https://opentsne.readthedocs.io/), and all t-SNE parameters in configs.yaml and db.py match openTSNE's API.**
 - **All other methods (UMAP, Isomap, LLE, Spectral, MDS) use parameter names matching their respective library APIs.**
 
-````
-
 ```Visualization Workflow
 
 A stand-alone Python script (viz.py) that, given a DR method and config_id, builds a 16 384 × 16 384 AVIF collage of all your thumbnails, records the output and per-point provenance in the database, and annotates the result with the method name and hyperparameters.
@@ -492,7 +490,10 @@ A stand-alone Python script (viz.py) that, given a DR method and config_id, buil
 # Python libraries
 pip install pyvips pillow-avif-plugin
 
-# System libraries (for libvips)
+# IMPORTANT: In viz.py, add this import at the top to enable AVIF decoding:
+import pillow_avif
+
+# System libraries (for libvips, but AVIF support is handled by Pillow)
 # macOS
 brew install vips
 # Ubuntu/Debian
@@ -537,7 +538,7 @@ and downsize each thumbnail by that factor.
 
 	5.	Build the mosaic
 	•	Create an empty 16 384 × 16 384 black canvas with pyvips.
-	•	Stream each (optionally-shrunk) AVIF thumbnail onto its (viz_x, viz_y) position.
+	•	Stream each (optionally-shrunk) AVIF thumbnail onto its (viz_x, viz_y) position. (Thumbnails are decoded using Pillow, so AVIF support in system vips is not required.)
 	•	Overlay annotation text in the top-right corner:
 
 METHOD (config 42): n_neighbors=15, min_dist=0.1, …
@@ -546,7 +547,7 @@ METHOD (config 42): n_neighbors=15, min_dist=0.1, …
 	6.	Write output
 Saves the final image as
 
-assets/viz/<method>_<config_id>_<timestamp>.avif
+visualizations/<method>_<config_id>_<timestamp>.avif
 
 
 	7.	Record provenance
@@ -590,4 +591,12 @@ db.py	Database helpers for configs, projection points, and viz tables.
 	•	Custom annotation: include additional metadata (e.g. subset strategy, runtime) in the label.
 
 With this pipeline in place, running viz.py automatically generates a fully annotated, provenance-tracked mosaic of your DR results.
-````
+
+⸻
+
+7. Troubleshooting
+
+- If you see white squares instead of thumbnails, make sure you have installed 'pillow-avif-plugin' in your virtual environment and that 'import pillow_avif' is present at the top of viz.py. This enables AVIF decoding via Pillow, regardless of your system vips configuration.
+- If you see errors about missing thumbnails, check that the filenames in the database match those in the 'assets/thumbnails' directory.
+- The database stores only the filename of the visualization output, not the full path. All output images are saved in the 'visualizations' folder.
+```

@@ -11,6 +11,19 @@ from pathlib import Path
 
 import pyvips                           # libvips bindings
 import db                               # your db.py module
+import pillow_avif
+
+# --- Pillow AVIF loader helper ---
+from PIL import Image
+import numpy as np
+
+def load_thumb(path):
+    """Read AVIF with Pillow and return a 3-band pyvips image."""
+    pil = Image.open(path).convert("RGB")          # Pillow decodes AVIF
+    arr = np.asarray(pil)                          # H×W×3 uint8
+    return pyvips.Image.new_from_memory(
+        arr.tobytes(), arr.shape[1], arr.shape[0], 3, format="uchar"
+    )
 
 # ----------------------------------------------------------------------
 # Parameters
@@ -49,7 +62,7 @@ def build_mosaic(normed, scale_factor, out_path, label):
             print(f"WARNING: missing thumbnail {thumb_path}")
             continue
 
-        thumb = pyvips.Image.new_from_file(str(thumb_path), access="sequential")
+        thumb = load_thumb(str(thumb_path))
 
         if scale_factor < 1.0:                      # shrink if necessary
             thumb = thumb.resize(scale_factor)      # Lanczos, good default
