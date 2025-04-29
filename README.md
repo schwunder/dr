@@ -485,6 +485,15 @@ python validate.py spacemap <config_id>
 
 A stand-alone Python script (viz.py) that, given a DR method and config_id, builds a 16 384 × 16 384 AVIF collage of all your thumbnails, records the output and per-point provenance in the database, and annotates the result with the method name and hyperparameters.
 
+**Note:** As of the latest update, `viz.py` writes true AVIF files using Pillow (with the `pillow-avif-plugin`). The mosaic is built using pyvips for efficient image composition, but the final AVIF encoding is handled by Pillow:
+
+- The raw RGB pixel buffer is extracted from the pyvips canvas.
+- This buffer is reshaped into a NumPy array and converted to a PIL Image.
+- The image is saved as `.avif` using Pillow's AVIF plugin.
+- No pyvips `write_to_file` or `heifsave` is used for AVIF output.
+
+The output files are now named like `umap_2_<timestamp>.avif` in `assets/visualizations/`.
+
 ### Batch Mode with viz_configs.yaml
 
 You can now specify a list of visualizations to generate in a YAML file (default: viz_configs.yaml):

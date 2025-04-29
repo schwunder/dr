@@ -11,12 +11,11 @@ from pathlib import Path
 
 import pyvips                           # libvips bindings
 import db                               # your db.py module
-import pillow_avif
-
-# --- Pillow AVIF loader helper ---
+import pillow_avif                      # registers AVIF support in Pillow
 from PIL import Image
 import numpy as np
 
+# --- Pillow AVIF loader helper ---
 def load_thumb(path):
     """Read AVIF with Pillow and return a 3-band pyvips image."""
     pil = Image.open(path).convert("RGB")          # Pillow decodes AVIF
@@ -78,7 +77,15 @@ def build_mosaic(normed, scale_factor, out_path, label):
     canvas = canvas.insert(text, tx, ty)
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    canvas.write_to_file(str(out_path), Q=80)       # Q≈80 → good size/quality
+
+    # ── export the Vips canvas to raw RGB bytes ────────────────────
+    raw = canvas.write_to_memory()  # raw interleaved RGB, uchar
+    arr = np.frombuffer(raw, dtype=np.uint8)
+    arr = arr.reshape((CANVAS_H, CANVAS_W, 3))
+
+    # ── convert to PIL and save as AVIF ─────────────────────────────
+    img = Image.fromarray(arr, mode="RGB")
+    img.save(str(out_path), format="AVIF", quality=80)
 
 def main():
     ap = argparse.ArgumentParser()
@@ -120,7 +127,7 @@ def main():
         SCRIPT_DIR = Path(__file__).resolve().parent
         OUT_DIR = SCRIPT_DIR / "assets" / "visualizations"
         OUT_DIR.mkdir(parents=True, exist_ok=True)
-        out_file = OUT_DIR / f"{method}_{config_id}_{int(time.time())}.png"
+        out_file = OUT_DIR / f"{method}_{config_id}_{int(time.time())}.avif"
         build_mosaic(normed, scale, out_file, label)
         print(f"Wrote {out_file}")
         # 5️⃣  Insert into viz_config and viz_points
