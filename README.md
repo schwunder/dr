@@ -479,124 +479,50 @@ python validate.py spacemap <config_id>
 - **t-SNE now uses [openTSNE](https://opentsne.readthedocs.io/), and all t-SNE parameters in configs.yaml and db.py match openTSNE's API.**
 - **All other methods (UMAP, Isomap, LLE, Spectral, MDS) use parameter names matching their respective library APIs.**
 
-```Visualization Workflow
+---
+
+## Visualization Workflow
 
 A stand-alone Python script (viz.py) that, given a DR method and config_id, builds a 16 384 × 16 384 AVIF collage of all your thumbnails, records the output and per-point provenance in the database, and annotates the result with the method name and hyperparameters.
 
-⸻
+### Batch Mode with viz_configs.yaml
 
-1. Dependencies
+You can now specify a list of visualizations to generate in a YAML file (default: viz_configs.yaml):
 
-# Python libraries
-pip install pyvips pillow-avif-plugin
-
-# IMPORTANT: In viz.py, add this import at the top to enable AVIF decoding:
-import pillow_avif
-
-# System libraries (for libvips, but AVIF support is handled by Pillow)
-# macOS
-brew install vips
-# Ubuntu/Debian
-sudo apt-get install -y libvips-dev libvips-tools
-
-
-
-⸻
-
-2. Usage
-
-python viz.py --method <method> --config <config_id>
-# e.g.
-python viz.py --method umap --config 42
-
-
-
-⸻
-
-3. What viz.py Does
-	1.	Fetch projection points
-Calls db.get_projection_points(method, config_id) to load
-
-(point_id, filename, artist, x, y)
-
-for every thumbnail.
-
-	2.	Fetch DR hyperparameters
-Calls db.get_dr_config(method, config_id) to retrieve all columns from <method>_configs, e.g.
-
-{'config_id': 42, 'n_neighbors': 15, 'min_dist': 0.1, …}
-
-
-	3.	Normalize coordinates
-Scales all raw (x, y) into integer pixel positions in [0, 16 383] via a min/max linear mapping.
-	4.	Optional thumbnail shrinking
-If N > 4 000 thumbnails, compute
-
-scale = sqrt(4_000 / N)
-
-and downsize each thumbnail by that factor.
-
-	5.	Build the mosaic
-	•	Create an empty 16 384 × 16 384 black canvas with pyvips.
-	•	Stream each (optionally-shrunk) AVIF thumbnail onto its (viz_x, viz_y) position. (Thumbnails are decoded using Pillow, so AVIF support in system vips is not required.)
-	•	Overlay annotation text in the top-right corner:
-
-METHOD (config 42): n_neighbors=15, min_dist=0.1, …
-
-
-	6.	Write output
-Saves the final image as
-
-visualizations/<method>_<config_id>_<timestamp>.avif
-
-
-	7.	Record provenance
-	•	Packs all point_ids into a BLOB and calls insert_viz_config(...) → returns viz_id.
-	•	Bulk-inserts every (viz_id, point_id, viz_x, viz_y) into viz_points.
-
-⸻
-
-4. Annotation Label Construction
-
-# After fetching cfg_params = db.get_dr_config(...)
-param_items = [
-    f"{key}={val}"
-    for key, val in cfg_params.items()
-    if key != "config_id"
-]
-params_str = ", ".join(param_items)
-label = f"{method.upper()} (config {config_id}): {params_str}"
-
-This produces, for example:
-
-UMAP (config 42): n_neighbors=15, min_dist=0.1, spread=1.0, …
-
-
-
-⸻
-
-5. Quick Reference
-
-File	Role
-viz.py	Builds mosaics, annotates, writes AVIF, and populates viz_config + viz_points.
-db.py	Database helpers for configs, projection points, and viz tables.
-
-
-
-⸻
-
-6. Next Steps & Tweaks
-	•	High-res vs. low-res: call build_mosaic() twice at different sizes, then update via db.update_viz_config_image().
-	•	Overlap management: replace normalise() with a collision-avoidance or jitter algorithm.
-	•	Custom annotation: include additional metadata (e.g. subset strategy, runtime) in the label.
-
-With this pipeline in place, running viz.py automatically generates a fully annotated, provenance-tracked mosaic of your DR results.
-
-⸻
-
-7. Troubleshooting
-
-- If you see white squares instead of thumbnails, make sure you have installed 'pillow-avif-plugin' in your virtual environment and that 'import pillow_avif' is present at the top of viz.py. This enables AVIF decoding via Pillow, regardless of your system vips configuration.
-- If you see errors about missing thumbnails, check that the filenames in the database match those in the 'assets/thumbnails' directory.
-- The database stores only the filename of the visualization output, not the full path. All output images are saved in the 'visualizations' folder.
+```yaml
+- method: tsne
+  config_id: 1
+- method: lle
+  config_id: 1
+- method: umap
+  config_id: 2
+# Add more as needed (only pairs with projection points in the DB will work)
 ```
+
+Run all visualizations in the file with:
+
+```sh
+python viz.py --viz-config viz_configs.yaml
+```
+
+Each entry should specify a DR method and a config_id (from your DR pipeline). The script will process all listed visualizations in sequence. The YAML file must be a flat list of dicts, each with 'method' and 'config_id'.
+
+If you see output like:
+
+    No points for method=tsne, config_id=2
+
+it means there are no projection points in the database for that method/config_id pair. Only use pairs that exist in your DB (see above for how to query them).
+
+### Single Visualization (legacy mode)
+
+You can still run a single visualization as before:
+
+```sh
+python viz.py --method umap --config 1
+```
+
+### Notes
+
+- The config file must be a flat YAML list of dicts, each with 'method' and 'config_id'.
+- If --viz-config is provided and exists, it takes precedence over --method/--config.
+- This makes it easy to batch-generate many visualizations in one run.

@@ -6,7 +6,7 @@
 # Requires: pyvips  +  pillow-avif-plugin
 #           pip install pyvips pillow-avif-plugin
 
-import argparse, os, math, struct, time
+import argparse, os, math, struct, time, yaml  # added yaml
 from pathlib import Path
 
 import pyvips                           # libvips bindings
@@ -82,62 +82,69 @@ def build_mosaic(normed, scale_factor, out_path, label):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--method", required=True, help="DR method name (e.g. umap)")
-    ap.add_argument("--config", type=int, required=True, help="config_id to visualise")
+    ap.add_argument("--method", help="DR method name (e.g. umap)")
+    ap.add_argument("--config", type=int, help="config_id to visualise")
+    ap.add_argument("--viz-config", type=str, default="viz_configs.yaml", help="YAML file listing visualizations to generate")
     args = ap.parse_args()
 
-    method   = args.method.lower()
-    config_id = args.config
+    def run_one(method, config_id):
+        method = method.lower()
+        # 1️⃣  Fetch raw points + DR parameters
+        raw_pts = db.get_projection_points(method, config_id)   # list of tuples
+        if not raw_pts:
+            print(f"No points for method={method}, config_id={config_id}")
+            return
+        # convert to dicts expected by normalise()
+        points = [
+            dict(point_id=r[0], filename=r[1], artist=r[2], x=r[3], y=r[4],
+                 method=method, config_id=config_id)
+            for r in raw_pts
+        ]
+        # ── fetch DR hyperparameters and build an annotation string ────────────────
+        cfg_params = db.get_dr_config(method, config_id)
+        param_items = [
+            f"{key}={val}"
+            for key, val in cfg_params.items()
+            if key != "config_id"
+        ]
+        params_str = ", ".join(param_items)
+        label = f"{method.upper()} (config {config_id}): {params_str}"
+        # 2️⃣  Normalise coordinates
+        normed = normalise(points)
+        # 3️⃣  Decide thumbnail scaling
+        scale = 1.0
+        if len(normed) > MAX_IMAGES_BEFORE_SHRINK:
+            scale = math.sqrt(MAX_IMAGES_BEFORE_SHRINK / len(normed))
+            print(f"Shrinking thumbnails by factor {scale:.3f} ...")
+        # 4️⃣  Build mosaic
+        SCRIPT_DIR = Path(__file__).resolve().parent
+        OUT_DIR = SCRIPT_DIR / "assets" / "visualizations"
+        OUT_DIR.mkdir(parents=True, exist_ok=True)
+        out_file = OUT_DIR / f"{method}_{config_id}_{int(time.time())}.png"
+        build_mosaic(normed, scale, out_file, label)
+        print(f"Wrote {out_file}")
+        # 5️⃣  Insert into viz_config and viz_points
+        point_id_blob = struct.pack(f"{len(points)}I", *(p["point_id"] for p in points))
+        viz_id = db.insert_viz_config(method, out_file.name, config_id, point_id_blob)
+        db.insert_viz_points(viz_id, normed)
+        print(f"Inserted viz_id={viz_id} with {len(normed)} points into DB.")
 
-    # 1️⃣  Fetch raw points + DR parameters
-    raw_pts = db.get_projection_points(method, config_id)   # list of tuples
-    if not raw_pts:
-        raise SystemExit(f"No points for method={method}, config_id={config_id}")
-
-    # convert to dicts expected by normalise()
-    points = [
-        dict(point_id=r[0], filename=r[1], artist=r[2], x=r[3], y=r[4],
-             method=method, config_id=config_id)
-        for r in raw_pts
-    ]
-
- # ── fetch DR hyperparameters and build an annotation string ────────────────
-    cfg_params = db.get_dr_config(method, config_id)        # e.g. {'config_id': 42, 'n_neighbors': 15, 'min_dist': 0.1}
-    # drop the config_id key itself, then turn each param into "key=val"
-    param_items = [
-        f"{key}={val}"
-        for key, val in cfg_params.items()
-       if key != "config_id"
-    ]
-    params_str = ", ".join(param_items)                     # e.g. "n_neighbors=15, min_dist=0.1"
-    label = f"{method.upper()} (config {config_id}): {params_str}"
-
-    # 2️⃣  Normalise coordinates
-    normed = normalise(points)
-
-    # 3️⃣  Decide thumbnail scaling
-    scale = 1.0
-    if len(normed) > MAX_IMAGES_BEFORE_SHRINK:
-        scale = math.sqrt(MAX_IMAGES_BEFORE_SHRINK / len(normed))
-        print(f"Shrinking thumbnails by factor {scale:.3f} ...")
-
-    # 4️⃣  Build mosaic
-    # Get absolute path of the script
-    SCRIPT_DIR = Path(__file__).resolve().parent
-    OUT_DIR = SCRIPT_DIR / "assets" / "visualizations"
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
-    
-    out_file = OUT_DIR / f"{method}_{config_id}_{int(time.time())}.png"
-    build_mosaic(normed, scale, out_file, label)
-    print(f"Wrote {out_file}")
-
-    # 5️⃣  Insert into viz_config and viz_points
-    point_id_blob = struct.pack(f"{len(points)}I", *(p["point_id"] for p in points))
-    # Store only the filename in the database, not the full path
-    viz_id = db.insert_viz_config(method, out_file.name, config_id, point_id_blob)
-
-    db.insert_viz_points(viz_id, normed)
-    print(f"Inserted viz_id={viz_id} with {len(normed)} points into DB.")
+    # Batch mode: if --viz-config is provided and exists, process all entries
+    if args.viz_config and os.path.exists(args.viz_config):
+        with open(args.viz_config, "r") as f:
+            viz_list = yaml.safe_load(f)
+        for entry in viz_list:
+            method = entry.get("method")
+            config_id = entry.get("config_id")
+            if not method or config_id is None:
+                print(f"Skipping invalid entry: {entry}")
+                continue
+            print(f"\n=== Visualizing: method={method}, config_id={config_id} ===")
+            run_one(method, config_id)
+    elif args.method and args.config is not None:
+        run_one(args.method, args.config)
+    else:
+        print("Specify either --method and --config, or provide a viz config YAML file.")
 
 if __name__ == "__main__":
     main()

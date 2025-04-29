@@ -1,0 +1,7 @@
+- method: tsne
+  config_id: 1
+- method: lle
+  config_id: 1
+- method: umap
+  config_id: 2
+# Add more as needed
