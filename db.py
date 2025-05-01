@@ -126,6 +126,14 @@ PARAM_COLS: Dict[str, List[str]] = {
         "n_components", "n_near_field", "n_middle_field", "d_local", "d_global",
         "eta", "n_epochs", "init", "metric", "verbose", "plot_results", "num_plots"
     ],
+    "glle": [
+        "method",
+        "k_neighbors",
+        "max_iterations",
+        "n_components",
+        "n_generation_of_embedding",
+        "verbosity"
+    ],
 }
 
 @contextmanager

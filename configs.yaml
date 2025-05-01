@@ -611,3 +611,24 @@ spacemap:
     num_plots: 20
     subset_strategy: random
     subset_size: 100
+
+glle:
+  - name: glle_em_fast
+    method: GLLE
+    k_neighbors: 10
+    max_iterations: 50
+    n_components: 2
+    n_generation_of_embedding: 3
+    subset_strategy: random
+    subset_size: 150
+    verbosity: 1
+
+  - name: glle_direct_long
+    method: GLLE_DirectSampling
+    k_neighbors: 15
+    max_iterations: 100
+    n_components: 2
+    n_generation_of_embedding: 5
+    subset_strategy: random
+    subset_size: 150
+    verbosity: 1
