@@ -134,6 +134,17 @@ PARAM_COLS: Dict[str, List[str]] = {
         "n_generation_of_embedding",
         "verbosity"
     ],
+    "paramrepulsor": [
+        "n_components",
+        "n_neighbors",
+        "n_epochs",
+        "lr",
+        "spread",
+        "repulsion_strength",
+        "apply_pca",      # stored as INTEGER (0 or 1)
+        "init",           # e.g. 'pca', 'random'
+        "verbose"         # optional for debugging
+    ],
 }
 
 @contextmanager

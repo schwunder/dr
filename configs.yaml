@@ -632,3 +632,29 @@ glle:
     subset_strategy: random
     subset_size: 150
     verbosity: 1
+
+paramrepulsor:
+  - name: fast
+    n_components: 2
+    n_neighbors: 5
+    n_epochs: 300
+    lr: 1.0
+    spread: 1.0
+    repulsion_strength: 1.0
+    apply_pca: true
+    init: "pca"
+    verbose: false
+    subset_strategy: "random"
+    subset_size: 500
+  - name: artist_first5
+    n_components: 2
+    n_neighbors: 5
+    n_epochs: 300
+    lr: 1.0
+    spread: 1.0
+    repulsion_strength: 1.0
+    apply_pca: true
+    init: "pca"
+    verbose: false
+    subset_strategy: "artist_first5"
+    subset_size: 500

@@ -46,6 +46,27 @@ pip cache purge
 pip install --force-reinstall --upgrade numpy pandas scikit-learn
 ```
 
+### ⚠️ Important: Annoy and High-Dimensional Data
+
+**Annoy (Approximate Nearest Neighbors) is not suitable for high-dimensional data (e.g., 100+ dimensions).**
+
+- In high-dimensional spaces, Annoy often fails to find any meaningful neighbors, returning only the query point itself or none at all.
+- This is due to the "curse of dimensionality": all points become nearly equidistant, and tree-based or hashing-based ANN algorithms (like Annoy) cannot distinguish neighbors.
+- This can cause methods that rely on Annoy (such as ParamRepulsor, TriMap, or any custom DR using Annoy) to fail or produce empty neighbor lists.
+
+**What to do instead:**
+
+- For high-dimensional data, use brute-force neighbor search (e.g., `sklearn.neighbors.NearestNeighbors` with `algorithm='brute'`).
+- For datasets with <10,000 points, brute-force is fast and robust.
+- If you must use an approximate method, reduce dimensionality first (e.g., PCA to 20–50D), but brute-force is still recommended for reliability.
+
+**If you see errors like:**
+
+- `ValueError: could not broadcast input array from shape (0,) into shape (N,)` in neighbor search code
+- Or, all neighbor queries return empty results
+
+**Check your neighbor search backend and switch to brute-force for high-dimensional data.**
+
 ---
 
 ## Database Tables
