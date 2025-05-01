@@ -24,7 +24,14 @@ def main(argv=None):
     size   = cfg.pop("subset_size", 250)
 
     embeddings, meta = db.fetch_subset(subset, size)
-    mod = importlib.import_module(f"methods.{args.method}")
+    sklearn_methods = {
+        'agg', 'dictlearn', 'fa', 'grp', 'ica', 'ipca', 'isomap', 'kpca', 'lle', 'mds',
+        'nmf', 'nystroem_pca', 'pca', 'spectral', 'srp', 'svd'
+    }
+    if args.method in sklearn_methods:
+        mod = importlib.import_module(f"methods.sklearn.{args.method}")
+    else:
+        mod = importlib.import_module(f"methods.{args.method}")
 
     start  = time.time()
     coords = mod.run(embeddings, cfg)

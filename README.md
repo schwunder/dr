@@ -157,7 +157,7 @@ _(Other methods: see `db.py` PARAM_COLS for full list. All parameter names in co
 
 - **db.py**: Handles all database schema, connections, and table creation. Defines table columns/types. Auto-initializes schema on import.
 - **configs.yaml**: Stores all DR method configurations (hyperparameters, subset strategies, etc.) for each method.
-- **methods/**: Contains one Python file per DR method (e.g., `umap.py`, `tsne.py`). Each file defines a `run(embeddings, config)` function that runs the reduction and returns 2D points.
+- **methods/**: Contains all DR method implementations. Most methods are top-level (e.g., `umap.py`, `tsne.py`), but all scikit-learn-based methods are grouped in the `methods/sklearn/` subfolder (e.g., `methods/sklearn/isomap.py`, `methods/sklearn/pca.py`). Each file defines a `run(embeddings, config)` function that runs the reduction and returns 2D points.
 - **run.py**: Main CLI entry point. Loads config, fetches embeddings, runs the selected DR method, saves results to DB.
 - **validate.py**: Checks for duplicate filenames in `projection_points` for a given method/config.
 - **agent.py**: Utility for status and table counts.
@@ -195,8 +195,11 @@ _(Other methods: see `db.py` PARAM_COLS for full list. All parameter names in co
 
    ```sh
    python run.py --method umap --config fast
-   # method: one of umap, tsne, isomap, lle, spectral, mds
+   # method: one of umap, tsne, isomap, lle, spectral, mds, pca, etc.
    # config: name from configs.yaml
+   #
+   # Note: All scikit-learn-based methods (e.g., isomap, lle, mds, pca, etc.) are now in the
+   # methods/sklearn/ subfolder. The CLI will automatically import them from there.
    ```
 
 5. **Inspect Configs**
