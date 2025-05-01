@@ -12,11 +12,7 @@ try:
     HNSWLIB_AVAILABLE = True
 except ImportError:
     HNSWLIB_AVAILABLE = False
-try:
-    import nmslib
-    NMSLIB_AVAILABLE = True
-except ImportError:
-    NMSLIB_AVAILABLE = False
+# import nmslib  # (commented out: not available on this platform)
 
 # Load a few embeddings from the database
 conn = sqlite3.connect('art.sqlite')
