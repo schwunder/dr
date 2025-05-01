@@ -13,6 +13,9 @@ try:
 except ImportError:
     HNSWLIB_AVAILABLE = False
 # import nmslib  # (commented out: not available on this platform)
+# nmslib is not available on this platform (e.g., ARM/Mac), so we set these for static analysis tools and to avoid runtime errors.
+NMSLIB_AVAILABLE = False
+nmslib = None  # type: ignore  # Prevents Pylance/pyright undefined variable warning
 
 # Load a few embeddings from the database
 conn = sqlite3.connect('art.sqlite')
