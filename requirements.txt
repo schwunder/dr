@@ -34,8 +34,8 @@ pandas==2.2.3
 parampacmap @ file:///Users/alien/Projects/dr/ParamRepulsor
 patsy==1.0.1
 phate==1.0.11
-pillow==11.2.1
 pillow-avif-plugin==1.5.2
+pillow==11.2.1
 pluggy==1.5.0
 pycparser==2.22
 PyGSP==0.5.1
@@ -53,7 +53,8 @@ scipy==1.15.2
 scprep==1.2.3
 seaborn==0.13.2
 six==1.17.0
--e git+https://github.com/schwunder/dr.git@363f063066da7b99b68c37b472b1ea2c96cc7e5d#egg=spacemap&subdirectory=SpaceMAP
+-e git+https://github.com/schwunder/dr.git@a321d520b4cc906f0d76bd7a32d69b3c63c6c784#egg=spacemap&subdirectory=SpaceMAP
+slisemap==1.6.2
 statsmodels==0.14.4
 sympy==1.14.0
 tasklogger==1.2.0
@@ -62,10 +63,9 @@ tifffile==2025.3.30
 torch==2.7.0
 tqdm==4.67.1
 trimap==1.1.4
+tsne_pso==1.1.7
 typing_extensions==4.13.2
 tzdata==2025.2
 umap-learn==0.5.7
 wrapt==1.17.2
-tsne-pso
-umap-learn
-tqdm
+tsimcne

@@ -188,6 +188,11 @@ PARAM_COLS: Dict[str, List[str]] = {
         "use_slipmap",
         "y"  # target values (may be handled specially)
     ],
+    "tsimcne": [
+        "n_components",
+        "total_epochs",
+        "random_state"
+    ],
 }
 
 @contextmanager

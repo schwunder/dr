@@ -42,13 +42,20 @@ def main(argv=None):
         cfg["y"] = y  # Used by SLISEMAP
         cfg_for_db = cfg.copy()
         del cfg_for_db["y"]  # Remove y before storing in database
+    elif args.method == "tsimcne":
+        cfg_for_db = cfg.copy()
+        # Convert total_epochs to comma-separated string for DB if it's a list
+        if isinstance(cfg_for_db.get("total_epochs"), list):
+            cfg_for_db["total_epochs"] = ",".join(str(x) for x in cfg_for_db["total_epochs"])
+    else:
+        cfg_for_db = cfg
 
     start  = time.time()
     coords = mod.run(embeddings, cfg)
     runtime = time.time() - start
 
     # Use the database-safe config for storage
-    cfg_id = db.upsert_config(args.method, cfg_for_db if args.method == "slisemap" else cfg, subset, size, runtime)
+    cfg_id = db.upsert_config(args.method, cfg_for_db, subset, size, runtime)
     db.save_points(args.method, cfg_id, meta, coords)
     print(
         f"✅ {args.method}:{args.config}  "

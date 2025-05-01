@@ -849,3 +849,11 @@ slisemap:
     subset_strategy: "artist_first5"
     subset_size: 250
     # Add more parameters as needed for your use case
+
+tsimcne:
+  - name: default
+    n_components: 2
+    total_epochs: [500, 50, 250]
+    random_state: 42
+    subset_strategy: "artist_first5"
+    subset_size: 250

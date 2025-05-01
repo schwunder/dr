@@ -301,6 +301,41 @@ _(Other methods: see `db.py` PARAM_COLS for full list. All parameter names in co
    # Output: umap cfg 1: 150/150 unique filenames
    ```
 
+#### Visualization Example
+
+You can visualize the t-SimCNE results using matplotlib. For example, to plot the 2D embedding and color by artist or label:
+
+```python
+import sqlite3
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Load projection points for t-SimCNE config 1
+con = sqlite3.connect('art.sqlite')
+cur = con.cursor()
+rows = cur.execute("""
+    SELECT x, y, artist FROM projection_points
+    WHERE method='tsimcne' AND config_id=1
+""").fetchall()
+con.close()
+
+X = np.array([[r[0], r[1]] for r in rows])
+artists = [r[2] for r in rows]
+
+# Assign a color to each artist
+unique_artists = sorted(set(artists))
+color_map = {name: i for i, name in enumerate(unique_artists)}
+colors = [color_map[a] for a in artists]
+
+plt.figure(figsize=(8, 8))
+plt.scatter(X[:, 0], X[:, 1], c=colors, cmap='tab20', s=10, alpha=0.8)
+plt.title('t-SimCNE 2D Visualization (colored by artist)')
+plt.xlabel('x')
+plt.ylabel('y')
+plt.tight_layout()
+plt.show()
+```
+
 ---
 
 ## Example Results for All DR Methods
@@ -623,6 +658,62 @@ python run.py --method slisemap --config slipmap  # for the fast variant
 - [SLIPMAP Paper](https://github.com/edahelsinki/slisemap/tree/slipmap_experiments)
 - [Official Documentation](https://edahelsinki.github.io/slisemap/slisemap/)
 
+### t-SimCNE (Contrastive Learning Visualization)
+
+t-SimCNE is a contrastive learning-based method for unsupervised 2D visualization of image datasets, as described in [Boehm et al., ICLR 2023](https://arxiv.org/abs/2210.09879). It is now fully integrated into this pipeline and can be used like any other DR method.
+
+#### Installation
+
+```
+pip install tsimcne
+```
+
+#### Example Config (in `configs.yaml`)
+
+```yaml
+tsimcne:
+  - name: default
+    n_components: 2
+    total_epochs: [500, 50, 250] # Will be stored as a comma-separated string in the DB
+    random_state: 42
+    batch_size: 128 # Optional, for large datasets
+    device: "cuda" # Or "cpu"
+    subset_strategy: "artist_first5"
+    subset_size: 250
+```
+
+#### Usage in Pipeline
+
+Run t-SimCNE as you would any other method:
+
+```sh
+python run.py --method tsimcne --config default
+```
+
+- Results are stored in the database and can be visualized or validated using the existing tools.
+- The `total_epochs` parameter is stored as a comma-separated string in the database, but is handled as a list by the method.
+- You can set `batch_size` and `device` in the config for large datasets or GPU acceleration.
+
+#### Validation
+
+Check for duplicate filenames in the projection:
+
+```sh
+python validate.py tsimcne 1
+# Output: tsimcne cfg 1: 250/250 unique filenames
+```
+
+#### Inspect Projection Points
+
+```sh
+sqlite3 art.sqlite "SELECT * FROM projection_points WHERE method='tsimcne' AND config_id=1 LIMIT 5;"
+```
+
+#### References
+
+- [t-SimCNE Paper (ICLR 2023)](https://arxiv.org/abs/2210.09879)
+- [Official repo & docs](https://github.com/berenslab/t-simcne)
+
 ---
 
 ## ⚠️ Important Limitations and Warnings
@@ -695,4 +786,4 @@ python run.py --method slisemap --config slipmap  # for the fast variant
 
 - **Full schema:** See `db.py` (PARAM_COLS and CREATE TABLE statements).
 - **All configs:** See `configs.yaml`.
-- **Method logic:** See `
+- **Method logic:** See `methods/` subfolder.
