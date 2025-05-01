@@ -799,3 +799,11 @@ pacmap:
     subset_size: 250
     preprocess_pca: 50
     backend: hnswlib
+
+clmds:
+  - name: default
+    n_clusters: 5
+    max_iter: 300
+    random_state: 42
+    subset_strategy: "random"
+    subset_size: 150

@@ -157,6 +157,11 @@ PARAM_COLS: Dict[str, List[str]] = {
         "random_state",
         "verbose"
     ],
+    "clmds": [
+        "n_clusters",
+        "max_iter",
+        "random_state"
+    ],
 }
 
 @contextmanager

@@ -2,7 +2,7 @@
 
 ## What is this?
 
-A Python pipeline for running and tracking dimensionality reduction (DR) methods (UMAP, t-SNE, Isomap, LLE, Spectral, MDS) on high-dimensional embeddings, storing all results and configs in a SQLite database.
+A Python pipeline for running and tracking dimensionality reduction (DR) methods (UMAP, t-SNE, Isomap, LLE, Spectral, MDS, cl-MDS, and more) on high-dimensional embeddings, storing all results and configs in a SQLite database.
 
 ---
 
@@ -14,7 +14,7 @@ A Python pipeline for running and tracking dimensionality reduction (DR) methods
 
 ```sh
 rm -rf .venv
-/opt/homebrew/bin/python3.11 -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate
 pip install --upgrade pip setuptools wheel
 ```
@@ -22,10 +22,70 @@ pip install --upgrade pip setuptools wheel
 ### 2. Install all dependencies
 
 ```sh
-pip install numpy scipy matplotlib pandas scikit-learn umap-learn openTSNE phate scprep evomap pyyaml
+pip install -r requirements.txt
 ```
 
-### 3. If you encounter architecture errors with PHATE/s-gd2 (e.g. 'mach-o file, but is an incompatible architecture'):
+- The `requirements.txt` is now fully synchronized with the working `.venv` and includes all necessary packages and versions for the pipeline, including advanced DR methods, visualization, and scientific stack. Editable installs and local packages are preserved.
+
+### 3. cl-MDS: Prerequisites, Build, and Integration
+
+#### a. Prerequisites
+
+- Fortran compiler (e.g., `gfortran`)
+- Python packages: numpy, scikit-learn, scipy, charset_normalizer (already in requirements.txt)
+
+#### b. Clone and Build cl-MDS
+
+```sh
+git clone --recursive http://github.com/mcaroba/cl-MDS.git
+cd cl-MDS/
+./build_libraries.sh
+cd ..
+```
+
+- The build script compiles Fortran code and creates Python-callable shared objects.
+- If you see encoding errors, ensure `charset_normalizer` is installed in your venv.
+
+#### c. Add cl-MDS to Python Path
+
+```sh
+export PYTHONPATH=$(pwd)/cl-MDS:$PYTHONPATH
+```
+
+- This ensures your pipeline can import cl-MDS modules at runtime.
+- **VSCode/Pylance tip:** Add `"./cl-MDS"` to `python.analysis.extraPaths` in `.vscode/settings.json` for editor import resolution.
+
+#### d. Usage in Pipeline
+
+- cl-MDS is now available as a DR method via `methods/clmds.py`.
+- Add or edit cl-MDS configs in `configs.yaml` under the `clmds:` section.
+- Run cl-MDS as you would any other method:
+
+```sh
+python run.py --method clmds --config default
+```
+
+- Results are stored in the database and can be visualized or validated using the existing tools.
+
+#### e. Example cl-MDS Config (in `configs.yaml`)
+
+```yaml
+clmds:
+  - name: default
+    n_clusters: 5
+    max_iter: 300
+    random_state: 42 # Not used by cl-MDS, but kept for provenance
+    subset_strategy: "random"
+    subset_size: 150
+```
+
+#### f. Troubleshooting cl-MDS and Fortran Builds
+
+- If you see UnicodeDecodeError or encoding issues during build, ensure `charset_normalizer` is installed.
+- If you see Fortran or compiler errors, check that `gfortran` is installed and available in your PATH.
+- If VSCode/Pylance reports missing imports for `cluster_mds`, ensure `python.analysis.extraPaths` includes `./cl-MDS` and your interpreter is set to `.venv`.
+
+### 4. If you encounter architecture errors with PHATE/s-gd2 (e.g. 'mach-o file, but is an incompatible architecture'):
 
 Build s-gd2 from source (requires Xcode command line tools):
 
@@ -37,7 +97,7 @@ pip install --no-binary=:all: --force-reinstall s-gd2
 
 This will build a native ARM wheel for s-gd2 and resolve PHATE architecture issues.
 
-### 4. Troubleshooting binary incompatibility (e.g. 'numpy.dtype size changed')
+### 5. Troubleshooting binary incompatibility (e.g. 'numpy.dtype size changed')
 
 If you see errors about numpy/pandas/scikit-learn binary incompatibility:
 
