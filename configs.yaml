@@ -807,3 +807,26 @@ clmds:
     random_state: 42
     subset_strategy: "random"
     subset_size: 150
+
+tsne_pso:
+  - name: default
+    n_components: 2
+    perplexity: 30.0
+    n_particles: 10
+    n_iter: 500
+    random_state: 42
+    inertia_weight: 0.7
+    h: 1e-20
+    f: 1e-21
+    use_hybrid: true
+    learning_rate: 200.0
+    init: "pca"
+    metric: "euclidean"
+    early_exaggeration: 12.0
+    min_grad_norm: 1e-7
+    parameter_optimization: true
+    dynamic_weight_adaptation: true
+    small_dataset_handling: true
+    numerical_robustness: true
+    subset_strategy: "artist_first5"
+    subset_size: 250

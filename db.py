@@ -162,6 +162,26 @@ PARAM_COLS: Dict[str, List[str]] = {
         "max_iter",
         "random_state"
     ],
+    "tsne_pso": [
+        "n_components",
+        "perplexity",
+        "n_particles",
+        "n_iter",
+        "random_state",
+        "inertia_weight",
+        "h",  # dynamic cognitive weight param
+        "f",  # dynamic social weight param
+        "use_hybrid",
+        "learning_rate",
+        "init",  # initialization method or array
+        "metric",
+        "early_exaggeration",
+        "min_grad_norm",
+        "parameter_optimization",  # auto-tuning flag
+        "dynamic_weight_adaptation",  # auto-adapt flag
+        "small_dataset_handling",  # special init for small N
+        "numerical_robustness"  # error/numerical stability flag
+    ],
 }
 
 @contextmanager

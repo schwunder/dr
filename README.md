@@ -319,6 +319,55 @@ Below are example outputs for each DR method after running the pipeline, includi
 - Projection: | 351 | tsne | 1 | Albrecht_Durer_1.avif | Albrecht Durer | 11.11 | 1.98 |
 - Validation: `tsne cfg 1: 250/250 unique filenames`
 
+### TSNE-PSO: Particle Swarm Optimized t-SNE
+
+TSNE-PSO is an enhanced version of t-SNE that uses Particle Swarm Optimization (PSO) for the optimization step, offering improved convergence and cluster definition. It supports hybrid optimization, dynamic parameter adaptation, and multiple initialization strategies. See the [tsne-pso PyPI page](https://pypi.org/project/tsne-pso/) for details.
+
+### Installation
+
+```
+pip install tsne-pso umap-learn tqdm
+```
+
+### Example Config (in `configs.yaml`)
+
+```yaml
+tsne_pso:
+  - name: default
+    n_components: 2
+    perplexity: 30.0
+    n_particles: 10
+    n_iter: 500
+    random_state: 42
+    inertia_weight: 0.7
+    h: 1e-20 # dynamic cognitive weight param
+    f: 1e-21 # dynamic social weight param
+    use_hybrid: true
+    learning_rate: 200.0
+    init: "pca"
+    metric: "euclidean"
+    early_exaggeration: 12.0
+    subset_strategy: "artist_first5"
+    subset_size: 250
+```
+
+### Usage in Pipeline
+
+Run TSNE-PSO as you would any other method:
+
+```sh
+python run.py --method tsne_pso --config default
+```
+
+- Results are stored in the database and can be visualized or validated using the existing tools.
+- All numeric parameters are automatically cast to the correct type (float/int) from YAML.
+
+### Example Results
+
+- Config: | 1 | artist_first5 | 250 | 1.23 | 2 | 30.0 | 10 | 500 | 42 | 0.7 | 1e-20 | 1e-21 | true | 200.0 | pca | euclidean | 12.0 |
+- Projection: | 2001 | tsne_pso | 1 | Albrecht_Durer_1.avif | Albrecht Durer | 15.234 | -8.567 |
+- Validation: `tsne_pso cfg 1: 250/250 unique filenames`
+
 ### Isomap
 
 - Config: | 1 | artist_first5 | 250 | 0.68 | 5 | 2 |
@@ -577,177 +626,4 @@ python validate.py spacemap <config_id>
 
 - **Full schema:** See `db.py` (PARAM_COLS and CREATE TABLE statements).
 - **All configs:** See `configs.yaml`.
-- **Method logic:** See `methods/` directory.
-
-- **t-SNE now uses [openTSNE](https://opentsne.readthedocs.io/), and all t-SNE parameters in configs.yaml and db.py match openTSNE's API.**
-- **All other methods (UMAP, Isomap, LLE, Spectral, MDS) use parameter names matching their respective library APIs.**
-
----
-
-## Visualization Workflow
-
-A stand-alone Python script (viz.py) that, given a DR method and config_id, builds a 16 384 × 16 384 AVIF collage of all your thumbnails, records the output and per-point provenance in the database, and annotates the result with the method name and hyperparameters.
-
-**Note:** As of the latest update, `viz.py` writes true AVIF files using Pillow (with the `pillow-avif-plugin`). The mosaic is built using pyvips for efficient image composition, but the final AVIF encoding is handled by Pillow:
-
-- The raw RGB pixel buffer is extracted from the pyvips canvas.
-- This buffer is reshaped into a NumPy array and converted to a PIL Image.
-- The image is saved as `.avif` using Pillow's AVIF plugin.
-- No pyvips `write_to_file` or `heifsave` is used for AVIF output.
-
-The output files are now named like `umap_2_<timestamp>.avif` in `assets/visualizations/`.
-
-### Batch Mode with viz_configs.yaml
-
-You can now specify a list of visualizations to generate in a YAML file (default: viz_configs.yaml):
-
-```yaml
-- method: tsne
-  config_id: 1
-- method: lle
-  config_id: 1
-- method: umap
-  config_id: 2
-# Add more as needed (only pairs with projection points in the DB will work)
-```
-
-Run all visualizations in the file with:
-
-```sh
-python viz.py --viz-config viz_configs.yaml
-```
-
-Each entry should specify a DR method and a config_id (from your DR pipeline). The script will process all listed visualizations in sequence. The YAML file must be a flat list of dicts, each with 'method' and 'config_id'.
-
-If you see output like:
-
-    No points for method=tsne, config_id=2
-
-it means there are no projection points in the database for that method/config_id pair. Only use pairs that exist in your DB (see above for how to query them).
-
-### Single Visualization (legacy mode)
-
-You can still run a single visualization as before:
-
-```sh
-python viz.py --method umap --config 1
-```
-
-### Notes
-
-- The config file must be a flat YAML list of dicts, each with 'method' and 'config_id'.
-- If --viz-config is provided and exists, it takes precedence over --method/--config.
-- This makes it easy to batch-generate many visualizations in one run.
-
----
-
-## Neighbor Search Backends: Annoy, HNSWlib, FAISS, and More
-
-### Background & Motivation
-
-- **Annoy** (default in PaCMAP) fails to find real neighbors in high-dimensional (e.g., 256D) continuous data, often returning only trivial/self neighbors. This is due to the curse of dimensionality and Annoy's random-projection tree limitations.
-- **FAISS** and **HNSWlib** are robust alternatives that reliably find true nearest neighbors in high-D data, and are now integrated into the pipeline.
-- **nmslib** is another option, but may fail to build on ARM/Mac platforms due to C++/SSE/pragma issues.
-
-### How to Use Alternative Backends
-
-- The pipeline now supports selecting the neighbor search backend via the config YAML:
-  - `backend: annoy` (default)
-  - `backend: hnswlib` (recommended for high-D data)
-  - (FAISS integration is available for custom scripts; see below)
-
-#### Example PaCMAP Config Using HNSWlib
-
-```yaml
-pacmap:
-  - name: hnswlib
-    n_components: 2
-    n_neighbors: 10
-    MN_ratio: 0.5
-    FP_ratio: 2.0
-    num_iters: 450
-    lr: 1.0
-    apply_pca: true
-    init: "pca"
-    random_state: 42
-    verbose: false
-    subset_strategy: "artist_first5"
-    subset_size: 250
-    preprocess_pca: 50
-    backend: hnswlib
-```
-
-### New Utility: `methods/knn_hnswlib.py`
-
-- Provides a simple function to compute k-nearest neighbors using HNSWlib.
-- Used internally by the pipeline when `backend: hnswlib` is set.
-- Can be used standalone for custom neighbor search needs.
-
-### Troubleshooting & Platform Notes
-
-- **Annoy**: If you see only self-neighbors or trivial results, switch to HNSWlib or FAISS.
-- **nmslib**: May not build on ARM/Mac. Try `pip install --no-binary :all: nmslib` or use Docker/conda if needed.
-- **FAISS**: Works out of the box for most platforms; see `annoy_debug.py` for example usage.
-- **HNSWlib**: Now the recommended backend for high-D data; fast, robust, and easy to install.
-
-### Troubleshooting Flowchart for Neighbor Search
-
-1. **Are you using Annoy and seeing only self-neighbors or empty neighbor lists?**
-   - Yes: Try switching to HNSWlib or FAISS (see config example above).
-   - No: Proceed to next step.
-2. **Is HNSWlib installed and importable?**
-   - Yes: Use `backend: hnswlib` in your config.
-   - No: Install with `pip install hnswlib`.
-3. **Is FAISS available?**
-   - Yes: Use FAISS for custom scripts or add as a backend (see below).
-   - No: Install with `pip install faiss-cpu` (or `faiss-gpu` for CUDA).
-4. **Is nmslib needed?**
-   - If you need nmslib and it fails to build, try `pip install --no-binary :all: nmslib`, or use Docker/conda-forge.
-5. **Still having issues?**
-   - Use brute-force kNN (`sklearn.neighbors.NearestNeighbors(algorithm='brute')`) for up to ~10,000 points.
-   - Check your data for NaNs, all-zeros, or duplicates.
-   - See `annoy_debug.py` for advanced diagnostics and backend comparison.
-
-### Debugging Steps & Findings (Project Summary)
-
-- **Annoy failures:** Only self-neighbors found in 256D, regardless of n_trees, search_k, or metric. Segfaults with some metrics (manhattan, angular) in high-D.
-- **Parameter sweeps:** Lowering n_neighbors, subset_size, and PCA dims did not help Annoy.
-- **PCA/Preprocessing:** Reducing to 50D, 20D, 10D, scaling, and normalization did not fix Annoy neighbor search.
-- **Brute-force:** Always finds real neighbors, but is slower for large N.
-- **FAISS:** Finds real neighbors, robust and fast, works on ARM/Mac and Linux.
-- **HNSWlib:** Finds real neighbors, robust and fast, easy to install, works on ARM/Mac and Linux.
-- **nmslib:** Fails to build on ARM/Mac due to C++/SSE/pragma errors; may work on Linux/x86.
-- **Integration:** Pipeline now supports backend selection via config; HNSWlib is recommended for high-D.
-
-### Backend Tradeoffs Table
-
-| Backend | Speed      | Memory | Reliability (High-D) | Platform Support      | Notes                      |
-| ------- | ---------- | ------ | -------------------- | --------------------- | -------------------------- |
-| Annoy   | Fast       | Low    | Poor                 | All                   | Fails in high-D, segfaults |
-| HNSWlib | Fast       | Medium | Excellent            | All (easy pip)        | Recommended                |
-| FAISS   | Fast (CPU) | Medium | Excellent            | Linux, Mac, Windows   | GPU support, robust        |
-| nmslib  | Fast       | Medium | Good                 | Linux/x86 (build req) | Build issues on ARM/Mac    |
-| Brute   | Slow (N^2) | High   | Perfect              | All                   | Use for N < 10,000         |
-
-### How to Add a New Backend (e.g., FAISS)
-
-1. Create a utility in `methods/` (e.g., `knn_faiss.py`) with a function to compute kNN indices.
-2. Patch `pacmap.py` (or your DR method) to accept a `backend` config and call the new utility.
-3. Add a config option (e.g., `backend: faiss`) in `configs.yaml`.
-4. Test with your data and compare results.
-
-### Platform-Specific Notes
-
-- **Apple Silicon/ARM:**
-  - Annoy and HNSWlib work via pip. nmslib may fail to build; try Docker or conda-forge.
-  - FAISS works via `faiss-cpu` (no GPU on ARM Macs).
-- **Linux/x86:**
-  - All backends work; nmslib builds easily.
-- **Windows:**
-  - Annoy, HNSWlib, and FAISS (CPU) work. nmslib may require WSL or conda.
-
-### Advanced Diagnostics: `annoy_debug.py`
-
-- Use this script to compare neighbor search results across Annoy, HNSWlib, FAISS, brute-force, and more.
-- Helps diagnose backend issues, data quirks, and performance tradeoffs.
-- Example usage and output included in the script.
+- **Method logic:** See `
