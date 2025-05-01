@@ -830,3 +830,22 @@ tsne_pso:
     numerical_robustness: true
     subset_strategy: "artist_first5"
     subset_size: 250
+
+slisemap:
+  - name: default
+    radius: 3.5
+    lasso: 0.01
+    use_slipmap: false # Set to true to use the faster SLIPMAP variant
+    y: null # Must be set to the target values array externally
+    subset_strategy: "artist_first5"
+    subset_size: 250
+    # Add more parameters as needed for your use case
+
+  - name: slipmap
+    radius: 2.0
+    lasso: 0.01
+    use_slipmap: true # Use the faster SLIPMAP variant
+    y: null # Will be set automatically by the pipeline
+    subset_strategy: "artist_first5"
+    subset_size: 250
+    # Add more parameters as needed for your use case

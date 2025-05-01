@@ -182,6 +182,12 @@ PARAM_COLS: Dict[str, List[str]] = {
         "small_dataset_handling",  # special init for small N
         "numerical_robustness"  # error/numerical stability flag
     ],
+    "slisemap": [
+        "radius",
+        "lasso",
+        "use_slipmap",
+        "y"  # target values (may be handled specially)
+    ],
 }
 
 @contextmanager

@@ -554,6 +554,75 @@ python validate.py spacemap <config_id>
 - [SpaceMAP Paper (ICML 2022)](https://proceedings.mlr.press/v162/zu22a.html)
 - [Original SpaceMAP repo](https://github.com/zuxinrui/SpaceMAP)
 
+### SLISEMAP & SLIPMAP
+
+SLISEMAP is a supervised dimensionality reduction method that combines local explanations with global visualization. It takes high-dimensional data and predictions (e.g., class labels) from a "black box" model, and produces a 2D embedding where points with similar local explanations are projected nearby. SLIPMAP is a faster variant using prototypes for linear time/memory complexity.
+
+#### Installation
+
+```
+pip install slisemap
+```
+
+- Requires: numpy, torch, scikit-learn, matplotlib, seaborn (all installed automatically with slisemap)
+- [SLISEMAP on PyPI](https://pypi.org/project/slisemap/)
+- [Official repo & docs](https://github.com/edahelsinki/slisemap)
+
+#### Example Configs (in `configs.yaml`)
+
+```yaml
+slisemap:
+  - name: default
+    radius: 3.5
+    lasso: 0.01
+    use_slipmap: false # Set to true to use the faster SLIPMAP variant
+    y: null # Will be set automatically by the pipeline
+    subset_strategy: "artist_first5"
+    subset_size: 250
+    # Add more parameters as needed for your use case
+
+  - name: slipmap
+    radius: 2.0
+    lasso: 0.01
+    use_slipmap: true # Use the faster SLIPMAP variant
+    y: null # Will be set automatically by the pipeline
+    subset_strategy: "artist_first5"
+    subset_size: 250
+    # Add more parameters as needed for your use case
+```
+
+#### Usage in Pipeline
+
+Run SLISEMAP or SLIPMAP as you would any other method:
+
+```sh
+python run.py --method slisemap --config default
+python run.py --method slisemap --config slipmap  # for the fast variant
+```
+
+- The pipeline will automatically encode the `artist` field from your metadata as integer labels and inject it as `y` for SLISEMAP/SLIPMAP.
+- The `y` parameter is not stored in the database (only used at runtime).
+- Only 2D output is supported (the embedding is always shape `(n_samples, 2)`).
+- Results are stored in the database and can be visualized or validated using the existing tools.
+
+#### Implementation Details
+
+- The wrapper is in `methods/slisemap.py` and supports both SLISEMAP and SLIPMAP via the `use_slipmap` flag.
+- The pipeline logic for label encoding and config handling is in `run.py`.
+- The embedding is extracted from the `_Z` attribute of the SLISEMAP/SLIPMAP object.
+
+#### Troubleshooting
+
+- If you see `ImportError: slisemap is not installed`, run `pip install slisemap` in your virtual environment.
+- If you see `ValueError: 'y' (target values) must be provided`, ensure your config uses the pipeline's automatic injection (do not set y manually).
+- If you see `ValueError: SLISEMAP output shape ... is not 2D`, check your config and data.
+
+#### References
+
+- [SLISEMAP Paper](https://arxiv.org/abs/2201.04455)
+- [SLIPMAP Paper](https://github.com/edahelsinki/slisemap/tree/slipmap_experiments)
+- [Official Documentation](https://edahelsinki.github.io/slisemap/slisemap/)
+
 ---
 
 ## ⚠️ Important Limitations and Warnings

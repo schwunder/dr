@@ -33,11 +33,22 @@ def main(argv=None):
     else:
         mod = importlib.import_module(f"methods.{args.method}")
 
+    if args.method == "slisemap":
+        # Encode 'artist' field from meta as integer labels for y
+        artists = [m["artist"] for m in meta]
+        unique_artists = {name: idx for idx, name in enumerate(sorted(set(artists)))}
+        # Store y separately from config to avoid database issues
+        y = [unique_artists[name] for name in artists]
+        cfg["y"] = y  # Used by SLISEMAP
+        cfg_for_db = cfg.copy()
+        del cfg_for_db["y"]  # Remove y before storing in database
+
     start  = time.time()
     coords = mod.run(embeddings, cfg)
     runtime = time.time() - start
 
-    cfg_id = db.upsert_config(args.method, cfg, subset, size, runtime)
+    # Use the database-safe config for storage
+    cfg_id = db.upsert_config(args.method, cfg_for_db if args.method == "slisemap" else cfg, subset, size, runtime)
     db.save_points(args.method, cfg_id, meta, coords)
     print(
         f"✅ {args.method}:{args.config}  "
