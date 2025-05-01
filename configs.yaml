@@ -658,3 +658,144 @@ paramrepulsor:
     verbose: false
     subset_strategy: "artist_first5"
     subset_size: 500
+
+pacmap:
+  # All configs below will preprocess with PCA to 50D by default (can override per config)
+  - name: fast
+    n_components: 2
+    n_neighbors: 10
+    MN_ratio: 0.5
+    FP_ratio: 2.0
+    num_iters: 450
+    lr: 1.0
+    apply_pca: true
+    init: "pca"
+    random_state: 42
+    verbose: false
+    subset_strategy: "artist_first5"
+    subset_size: 250
+    preprocess_pca: 50
+  - name: low_neighbors
+    n_components: 2
+    n_neighbors: 2
+    MN_ratio: 0.5
+    FP_ratio: 2.0
+    num_iters: 450
+    lr: 1.0
+    apply_pca: true
+    init: "pca"
+    random_state: 42
+    verbose: false
+    subset_strategy: "artist_first5"
+    subset_size: 250
+  - name: low_subset
+    n_components: 2
+    n_neighbors: 10
+    MN_ratio: 0.5
+    FP_ratio: 2.0
+    num_iters: 450
+    lr: 1.0
+    apply_pca: true
+    init: "pca"
+    random_state: 42
+    verbose: false
+    subset_strategy: "artist_first5"
+    subset_size: 40
+  - name: low_neighbors_and_subset
+    n_components: 2
+    n_neighbors: 2
+    MN_ratio: 0.5
+    FP_ratio: 2.0
+    num_iters: 450
+    lr: 1.0
+    apply_pca: true
+    init: "pca"
+    random_state: 42
+    verbose: false
+    subset_strategy: "artist_first5"
+    subset_size: 40
+  - name: pca20
+    n_components: 2
+    n_neighbors: 10
+    MN_ratio: 0.5
+    FP_ratio: 2.0
+    num_iters: 450
+    lr: 1.0
+    apply_pca: true
+    init: "pca"
+    random_state: 42
+    verbose: false
+    subset_strategy: "artist_first5"
+    subset_size: 250
+    preprocess_pca: 20
+  - name: pca10
+    n_components: 2
+    n_neighbors: 10
+    MN_ratio: 0.5
+    FP_ratio: 2.0
+    num_iters: 450
+    lr: 1.0
+    apply_pca: true
+    init: "pca"
+    random_state: 42
+    verbose: false
+    subset_strategy: "artist_first5"
+    subset_size: 250
+    preprocess_pca: 10
+  - name: pca5
+    n_components: 2
+    n_neighbors: 10
+    MN_ratio: 0.5
+    FP_ratio: 2.0
+    num_iters: 450
+    lr: 1.0
+    apply_pca: true
+    init: "pca"
+    random_state: 42
+    verbose: false
+    subset_strategy: "artist_first5"
+    subset_size: 250
+    preprocess_pca: 5
+  - name: tiny_subset
+    n_components: 2
+    n_neighbors: 2
+    MN_ratio: 0.5
+    FP_ratio: 2.0
+    num_iters: 450
+    lr: 1.0
+    apply_pca: true
+    init: "pca"
+    random_state: 42
+    verbose: false
+    subset_strategy: "artist_first5"
+    subset_size: 10
+    preprocess_pca: 50
+  - name: minimal_neighbors
+    n_components: 2
+    n_neighbors: 1
+    MN_ratio: 0.1
+    FP_ratio: 0.1
+    num_iters: 450
+    lr: 1.0
+    apply_pca: true
+    init: "pca"
+    random_state: 42
+    verbose: false
+    subset_strategy: "artist_first5"
+    subset_size: 250
+    preprocess_pca: 50
+  - name: hnswlib
+    n_components: 2
+    n_neighbors: 10
+    MN_ratio: 0.5
+    FP_ratio: 2.0
+    num_iters: 450
+    lr: 1.0
+    apply_pca: true
+    init: "pca"
+    random_state: 42
+    verbose: false
+    subset_strategy: "artist_first5"
+    subset_size: 250
+    preprocess_pca: 50
+    backend: hnswlib

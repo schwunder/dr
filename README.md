@@ -578,3 +578,116 @@ python viz.py --method umap --config 1
 - The config file must be a flat YAML list of dicts, each with 'method' and 'config_id'.
 - If --viz-config is provided and exists, it takes precedence over --method/--config.
 - This makes it easy to batch-generate many visualizations in one run.
+
+---
+
+## Neighbor Search Backends: Annoy, HNSWlib, FAISS, and More
+
+### Background & Motivation
+
+- **Annoy** (default in PaCMAP) fails to find real neighbors in high-dimensional (e.g., 256D) continuous data, often returning only trivial/self neighbors. This is due to the curse of dimensionality and Annoy's random-projection tree limitations.
+- **FAISS** and **HNSWlib** are robust alternatives that reliably find true nearest neighbors in high-D data, and are now integrated into the pipeline.
+- **nmslib** is another option, but may fail to build on ARM/Mac platforms due to C++/SSE/pragma issues.
+
+### How to Use Alternative Backends
+
+- The pipeline now supports selecting the neighbor search backend via the config YAML:
+  - `backend: annoy` (default)
+  - `backend: hnswlib` (recommended for high-D data)
+  - (FAISS integration is available for custom scripts; see below)
+
+#### Example PaCMAP Config Using HNSWlib
+
+```yaml
+pacmap:
+  - name: hnswlib
+    n_components: 2
+    n_neighbors: 10
+    MN_ratio: 0.5
+    FP_ratio: 2.0
+    num_iters: 450
+    lr: 1.0
+    apply_pca: true
+    init: "pca"
+    random_state: 42
+    verbose: false
+    subset_strategy: "artist_first5"
+    subset_size: 250
+    preprocess_pca: 50
+    backend: hnswlib
+```
+
+### New Utility: `methods/knn_hnswlib.py`
+
+- Provides a simple function to compute k-nearest neighbors using HNSWlib.
+- Used internally by the pipeline when `backend: hnswlib` is set.
+- Can be used standalone for custom neighbor search needs.
+
+### Troubleshooting & Platform Notes
+
+- **Annoy**: If you see only self-neighbors or trivial results, switch to HNSWlib or FAISS.
+- **nmslib**: May not build on ARM/Mac. Try `pip install --no-binary :all: nmslib` or use Docker/conda if needed.
+- **FAISS**: Works out of the box for most platforms; see `annoy_debug.py` for example usage.
+- **HNSWlib**: Now the recommended backend for high-D data; fast, robust, and easy to install.
+
+### Troubleshooting Flowchart for Neighbor Search
+
+1. **Are you using Annoy and seeing only self-neighbors or empty neighbor lists?**
+   - Yes: Try switching to HNSWlib or FAISS (see config example above).
+   - No: Proceed to next step.
+2. **Is HNSWlib installed and importable?**
+   - Yes: Use `backend: hnswlib` in your config.
+   - No: Install with `pip install hnswlib`.
+3. **Is FAISS available?**
+   - Yes: Use FAISS for custom scripts or add as a backend (see below).
+   - No: Install with `pip install faiss-cpu` (or `faiss-gpu` for CUDA).
+4. **Is nmslib needed?**
+   - If you need nmslib and it fails to build, try `pip install --no-binary :all: nmslib`, or use Docker/conda-forge.
+5. **Still having issues?**
+   - Use brute-force kNN (`sklearn.neighbors.NearestNeighbors(algorithm='brute')`) for up to ~10,000 points.
+   - Check your data for NaNs, all-zeros, or duplicates.
+   - See `annoy_debug.py` for advanced diagnostics and backend comparison.
+
+### Debugging Steps & Findings (Project Summary)
+
+- **Annoy failures:** Only self-neighbors found in 256D, regardless of n_trees, search_k, or metric. Segfaults with some metrics (manhattan, angular) in high-D.
+- **Parameter sweeps:** Lowering n_neighbors, subset_size, and PCA dims did not help Annoy.
+- **PCA/Preprocessing:** Reducing to 50D, 20D, 10D, scaling, and normalization did not fix Annoy neighbor search.
+- **Brute-force:** Always finds real neighbors, but is slower for large N.
+- **FAISS:** Finds real neighbors, robust and fast, works on ARM/Mac and Linux.
+- **HNSWlib:** Finds real neighbors, robust and fast, easy to install, works on ARM/Mac and Linux.
+- **nmslib:** Fails to build on ARM/Mac due to C++/SSE/pragma errors; may work on Linux/x86.
+- **Integration:** Pipeline now supports backend selection via config; HNSWlib is recommended for high-D.
+
+### Backend Tradeoffs Table
+
+| Backend | Speed      | Memory | Reliability (High-D) | Platform Support      | Notes                      |
+| ------- | ---------- | ------ | -------------------- | --------------------- | -------------------------- |
+| Annoy   | Fast       | Low    | Poor                 | All                   | Fails in high-D, segfaults |
+| HNSWlib | Fast       | Medium | Excellent            | All (easy pip)        | Recommended                |
+| FAISS   | Fast (CPU) | Medium | Excellent            | Linux, Mac, Windows   | GPU support, robust        |
+| nmslib  | Fast       | Medium | Good                 | Linux/x86 (build req) | Build issues on ARM/Mac    |
+| Brute   | Slow (N^2) | High   | Perfect              | All                   | Use for N < 10,000         |
+
+### How to Add a New Backend (e.g., FAISS)
+
+1. Create a utility in `methods/` (e.g., `knn_faiss.py`) with a function to compute kNN indices.
+2. Patch `pacmap.py` (or your DR method) to accept a `backend` config and call the new utility.
+3. Add a config option (e.g., `backend: faiss`) in `configs.yaml`.
+4. Test with your data and compare results.
+
+### Platform-Specific Notes
+
+- **Apple Silicon/ARM:**
+  - Annoy and HNSWlib work via pip. nmslib may fail to build; try Docker or conda-forge.
+  - FAISS works via `faiss-cpu` (no GPU on ARM Macs).
+- **Linux/x86:**
+  - All backends work; nmslib builds easily.
+- **Windows:**
+  - Annoy, HNSWlib, and FAISS (CPU) work. nmslib may require WSL or conda.
+
+### Advanced Diagnostics: `annoy_debug.py`
+
+- Use this script to compare neighbor search results across Annoy, HNSWlib, FAISS, brute-force, and more.
+- Helps diagnose backend issues, data quirks, and performance tradeoffs.
+- Example usage and output included in the script.

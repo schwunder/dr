@@ -145,6 +145,18 @@ PARAM_COLS: Dict[str, List[str]] = {
         "init",           # e.g. 'pca', 'random'
         "verbose"         # optional for debugging
     ],
+    "pacmap": [
+        "n_components",
+        "n_neighbors",
+        "MN_ratio",
+        "FP_ratio",
+        "num_iters",
+        "lr",
+        "apply_pca",
+        "init",
+        "random_state",
+        "verbose"
+    ],
 }
 
 @contextmanager
