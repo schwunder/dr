@@ -1,10 +1,35 @@
 import { points, artists, getConfigs } from "./db.js";
+import { serveStatic, spawn } from "bun";
+
+const PY = "./.venv/bin/python"; // or just "python3" if your venv is activated
 
 Bun.serve({
   port: 3000,
-  fetch: (req) => {
-    const path = new URL(req.url).pathname;
+  async fetch(req) {
+    const url = new URL(req.url);
+    const path = url.pathname;
 
+    // ─── 1) Run a Python script ───
+    if (path === "/api/run" && req.method === "POST") {
+      try {
+        const { method, config } = await req.json();
+        const proc = spawn([
+          PY,
+          "run.py",
+          "--method", method,
+          "--config", config
+        ]);
+        const { stdout, stderr, exitCode } = await proc.exited;
+        if (exitCode !== 0) {
+          return new Response(stderr, { status: 500 });
+        }
+        return new Response(stdout || "OK");
+      } catch (e) {
+        return new Response("Failed to run script: " + e.message, { status: 500 });
+      }
+    }
+
+    // ─── 2) Static files ───
     if (!path.startsWith("/api/")) {
       return new Response(
         Bun.file("public" + ((path === "/" && "/index.html") || path)),

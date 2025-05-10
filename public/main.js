@@ -18,6 +18,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const methodSelect = document.getElementById("method");
   const configSelect = document.getElementById("config");
   const loadBtn = document.getElementById("load");
+  const runPythonBtn = document.getElementById("run-python");
 
   // Hide canvas until data is loaded
   canvas = document.getElementById("canvas");
@@ -70,6 +71,31 @@ document.addEventListener("DOMContentLoaded", async () => {
     await initializeApp(method, config_id);
     // Optionally hide controls after load
     // document.getElementById("controls").style.display = "none";
+  });
+
+  // 4. On Run Python button, trigger backend Python script
+  runPythonBtn.addEventListener("click", async () => {
+    const method = methodSelect.value;
+    const config = configSelect.value;
+    if (!method || !config) {
+      alert("Select both method and config first.");
+      return;
+    }
+    try {
+      const res = await fetch("/api/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ method, config })
+      });
+      if (!res.ok) {
+        const errText = await res.text();
+        alert("Python error: " + errText);
+      } else {
+        alert("Python script ran successfully!");
+      }
+    } catch (err) {
+      alert("Request failed: " + err);
+    }
   });
 });
 
