@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Point Cloud Viewer</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+      /* Reset and full-window styling */
+      html,
+      body {
+        height: 100%;
+        display: flex; /* Flex container for canvas and pane */
+        overflow: hidden;
+      }
+      #canvas {
+        width: 100vw; /* Full width by default */
+      }
+      #resized {
+        display: none; /* Hidden initially */
+        width: 0;
+        overflow: auto;
+        flex-direction: column;
+      }
+      /* Trigger: Halve the viewport when 'show-resized' is active */
+      .show-resized #canvas {
+        width: 50vw; /* Half of the viewport */
+      }
+      .show-resized #resized {
+        display: flex;
+        width: 50vw; /* Other half of the viewport */
+      }
+      img {
+        max-width: 100%;
+        max-height: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="controls" style="position:absolute;z-index:10;left:10px;top:10px;background:white;padding:6px 12px;border-radius:8px;box-shadow:0 2px 8px #0002;">
+      <label for="method">Method:</label>
+      <select id="method"></select>
+      <label for="config">Config:</label>
+      <select id="config"></select>
+      <button id="load">Load</button>
+    </div>
+    <canvas id="canvas"></canvas>
+    <div id="resized">
+      <div id="image"></div>
+      <p id="bio"></p>
+      <p id="genre"></p>
+      <p id="name"></p>
+      <p id="nationality"></p>
+      <p id="paintings"></p>
+      <p id="wikipedia"></p>
+      <p id="years"></p>
+    </div>
+    <script type="module" src="/main.js"></script>
+  </body>
+</html>

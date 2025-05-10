@@ -9,3 +9,13 @@ methods/__pycache__
 /GLLE/
 /ParamRepulsor/
 /cl-MDS/
+assets/thumbnails/*
+assets/resized/*
+asssets/visualizations/*
+public/favicon.ico
+*.bak   
+backup
+*.lock
+*.lockb
+node_modules
+*.test.js
