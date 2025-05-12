@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Point Cloud Viewer</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+      html, body {
+        height: 100%;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+      }
+      #status-message {
+        margin: 0;
+        padding: 8px 16px;
+        font-size: 1em;
+      }
+      #controls-bar {
+        width: 100vw;
+        height: 48px;
+        line-height: 48px;
+        display: flex;
+        align-items: center;
+        gap: 0.5em;
+        background: #fff;
+        border-bottom: 1px solid #eee;
+        padding: 0 16px;
+        box-sizing: border-box;
+        z-index: 10;
+        position: relative;
+      }
+      #main-content {
+        position: relative;
+        width: 100vw;
+        height: calc(100vh - 48px);
+      }
+      #canvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100%;
+        display: block;
+        z-index: 1;
+      }
+      #resized {
+        display: none;
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 0;
+        height: 100%;
+        overflow: auto;
+        background: #fafaff;
+        border-left: 1px solid #eee;
+        padding: 16px;
+        box-sizing: border-box;
+        z-index: 2;
+      }
+      body.show-resized #canvas {
+        width: 50vw;
+        left: 0;
+      }
+      body.show-resized #resized {
+        display: block;
+        width: 50vw;
+      }
+      img {
+        max-width: 100%;
+        max-height: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="status-message"></div>
+    <div id="controls-bar">
+      <label for="method">Method:</label>
+      <select id="method"></select>
+      <label for="config">Config:</label>
+      <select id="config"></select>
+      <button id="load">Load</button>
+      <button id="run-python">Run Python</button>
+      <span id="python-env"></span>
+    </div>
+    <div id="main-content">
+      <svg id="viz-svg" style="position:absolute;top:0;left:0;width:100vw;height:100%;z-index:2;pointer-events:none;"></svg>
+      <canvas id="canvas"></canvas>
+      <div id="resized">
+        <div id="image"></div>
+        <p id="bio"></p>
+        <p id="genre"></p>
+        <p id="name"></p>
+        <p id="nationality"></p>
+        <p id="paintings"></p>
+        <p id="wikipedia"></p>
+        <p id="years"></p>
+      </div>
+    </div>
+    <script type="module" src="/main.js"></script>
+  </body>
+</html>
