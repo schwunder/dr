@@ -1,52 +1,97 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Point Cloud Viewer</title>
-    <script src="https://d3js.org/d3.v7.min.js"></script>
-    <style>
-      /* Reset and full-window styling */
-      html,
-      body {
-        height: 100%;
-        display: flex; /* Flex container for canvas and pane */
-        overflow: hidden;
-      }
-      #canvas {
-        width: 100vw; /* Full width by default */
-      }
-      #resized {
-        display: none; /* Hidden initially */
-        width: 0;
-        overflow: auto;
-        flex-direction: column;
-      }
-      /* Trigger: Halve the viewport when 'show-resized' is active */
-      .show-resized #canvas {
-        width: 50vw; /* Half of the viewport */
-      }
-      .show-resized #resized {
-        display: flex;
-        width: 50vw; /* Other half of the viewport */
-      }
-      img {
-        max-width: 100%;
-        max-height: 100%;
-      }
-    </style>
-  </head>
-  <body>
-    <canvas id="canvas"></canvas>
-    <div id="resized">
-      <div id="image"></div>
-      <p id="bio"></p>
-      <p id="genre"></p>
-      <p id="name"></p>
-      <p id="nationality"></p>
-      <p id="paintings"></p>
-      <p id="wikipedia"></p>
-      <p id="years"></p>
+<head>
+  <meta charset="UTF-8" />
+  <title>Dim‑Reduction Playground</title>
+
+  <!-- external libs -->
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+
+  <!-- ============  COMMON STYLES  ============ -->
+  <style>
+    :root{
+      --bar-h:48px;
+      --aside-w:340px;
+    }
+    html,body{height:100%;margin:0;font-family:system-ui,sans-serif;background:#f7f7f7;overflow:hidden}
+
+    /* top command bar (method & preset pickers) */
+    #controls-bar{
+      height:var(--bar-h);line-height:var(--bar-h);display:flex;align-items:center;gap:.5em;
+      background:#fff;border-bottom:1px solid #eee;padding:0 16px;box-sizing:border-box;z-index:20
+    }
+    #controls-bar button{padding:4px 10px}
+
+    /* two–column layout under the bar */
+    #layout{display:flex;height:calc(100% - var(--bar-h));width:100%}
+
+    /* ============  LEFT PANE – DR sliders  ============ */
+    #dr-pane{
+      width:var(--aside-w);overflow-y:auto;border-right:1px solid #eee;background:#fafafa;
+    }
+    details{margin:.6rem 0;background:#fff;border-radius:.6rem;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+    summary{cursor:pointer;padding:.8rem 1rem;font-weight:600}
+    .param-row{display:flex;align-items:center;gap:1rem;padding:.35rem 1.4rem}
+    .param-row label{flex:0 0 180px;font-size:.9rem}
+    .param-row input[type=range]{flex:1 1 200px}
+    .param-row output{width:60px;text-align:right;font-variant-numeric:tabular-nums}
+    .preset-bar{display:flex;gap:.4rem;padding:.6rem 1.4rem .8rem;flex-wrap:wrap}
+    .preset-bar button{padding:.25rem .8rem;border:1px solid #bbb;border-radius:.4rem;background:#fafafa;cursor:pointer;font-size:.82rem}
+    .preset-bar button:hover{background:#ececec}
+    .adv{background:#fdfdfd;border-top:1px solid #eee;margin-top:.4rem;padding-top:.4rem}
+    .adv summary{font-size:.85rem;padding:.4rem 1rem}
+
+    /* ============  RIGHT PANE – viewer  ============ */
+    #viewer{flex:1;position:relative;background:#fff}
+    #viz-svg{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:3}
+    #canvas{position:absolute;top:0;left:0;width:100%;height:100%;display:block;z-index:1}
+    #resized{display:none;position:absolute;top:0;right:0;height:100%;overflow:auto;background:#fafaff;
+             border-left:1px solid #eee;padding:16px;box-sizing:border-box;z-index:4;width:0}
+    #viewer.split #canvas{width:50%}
+    #viewer.split #resized{display:block;width:50%}
+
+    /* info boxes inside resized panel */
+    #resized p{margin:.3rem 0;font-size:.9rem;color:#333}
+    #resized img{max-width:100%}
+  </style>
+</head>
+
+<body>
+  <!-- ---------- top method/preset bar ---------- -->
+  <div id="controls-bar">
+    <label for="method">Method:</label><select id="method"></select>
+    <label for="config">Config:</label><select id="config"></select>
+    <button id="load">Load</button>
+    <button id="run-python">Run Python</button>
+    <span id="python-env"></span>
+  </div>
+
+  <!-- ---------- two‑column workspace ---------- -->
+  <div id="layout">
+    <!-- left: dimensional‑reduction sliders -->
+    <aside id="dr-pane">
+      <h3 style="margin:1rem 1.4rem 0">Dimensional‑Reduction Controls</h3>
+      <div id="panel"></div>
+    </aside>
+
+    <!-- right: point‑cloud viewer -->
+    <div id="viewer">
+      <svg id="viz-svg"></svg>
+      <canvas id="canvas"></canvas>
+
+      <!-- optional split‑view panel -->
+      <div id="resized">
+        <div id="image"></div>
+        <p id="bio"></p><p id="genre"></p><p id="name"></p><p id="nationality"></p>
+        <p id="paintings"></p><p id="wikipedia"></p><p id="years"></p>
+      </div>
     </div>
-    <script type="module" src="/main.js"></script>
-  </body>
+  </div>
+
+  <!-- ----------  logic  ---------- -->
+  <!-- DR sliders + presets -->
+  <script src="controls.js"></script>
+  <!-- point‑cloud rendering / dataset logic -->
+  <script type="module" src="/main.js"></script>
+</body>
 </html>
