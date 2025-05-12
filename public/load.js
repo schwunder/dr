@@ -1,28 +1,28 @@
 // Load a single image (thumbnail or resized)
-const loadImage = (filename, isResized = false) =>
-    new Promise((resolve, reject) => {
-      const img = new Image();
-      img.crossOrigin = "anonymous"; // prevent tainted canvas security errors
-  
-      img.onerror = (e) => reject(`failed to load ${filename}`);
-      img.onload = () => resolve(img);
-  
-      const path = `http://localhost:3001/${
-        isResized ? "resized" : "thumbnails"
-      }/${filename}`;
-      img.src = path;
-    });
+const loadImage = (filename, type = "thumbnails") =>
+  new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onerror = (e) => reject(`failed to load ${filename}`);
+    img.onload = () => resolve(img);
+    const path = `http://localhost:3001/${type}/${filename}`;
+    img.src = path;
+  });
   
   // load all thumbnails for points
   const thumbnails = async (points) => {
-    console.log(`Loading ${points.length} thumbnails...`);
-    const images = await Promise.all(points.map((p) => loadImage(p.filename)));
-    points.forEach((p, i) => (p.thumb = images[i]));
-    return points;
-  };
-  
+  const validPoints = points.filter((p) => p.filename);
+  if (validPoints.length !== points.length) {
+    console.warn("Some points are missing filenames and will be skipped:", points.filter(p => !p.filename));
+  }
+  console.log(`Loading ${validPoints.length} thumbnails...`);
+  const images = await Promise.all(validPoints.map((p) => loadImage(p.filename)));
+  validPoints.forEach((p, i) => (p.thumb = images[i]));
+  return validPoints;
+};
+
   // load a resized image
-  const resized = (filename) => loadImage(filename, true);
+  const resized = (filename) => loadImage(filename, "resized");
   
   // fetch artist information
   const artists = async (name) => {
@@ -36,5 +36,9 @@ const loadImage = (filename, isResized = false) =>
     }
   };
   
-  export { thumbnails, resized, artists };
+  // Load a visualization image (and optionally fetch metadata elsewhere)
+const visualizations = (filename) => loadImage(filename, "visualizations");
+
+export { thumbnails, resized, artists, visualizations };
+
   
