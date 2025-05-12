@@ -109,6 +109,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         canvas.style.display = "block";
+        renderVizPoints();
       }).catch(err => {
         alert('Failed to load visualization image: ' + err);
       });
@@ -215,6 +216,35 @@ document.addEventListener("DOMContentLoaded", async () => {
       renderView(ctx, dims, state.transform, currentBitmap);
     }
   
+    // Draw the viz points using D3 on the SVG overlay
+    function renderVizPoints() {
+      const svg = d3.select('#viz-svg');
+      svg.selectAll('*').remove(); // Clear previous
+
+      // Set SVG size to match canvas
+      svg.attr('width', canvas.width).attr('height', canvas.height);
+
+      // If no points, skip
+      if (!state.points || !state.points.length) return;
+
+      // Apply transform (zoom/pan)
+      const t = state.transform || d3.zoomIdentity;
+      // You may need to use the same scales as for the bitmap
+      // For now, assume points have x, y in [0, MAX_BITMAP_SIZE]
+      const scale = t.k;
+      const translate = [t.x, t.y];
+
+      svg.selectAll('circle')
+        .data(state.points)
+        .enter()
+        .append('circle')
+        .attr('cx', d => d.x * scale + translate[0])
+        .attr('cy', d => d.y * scale + translate[1])
+        .attr('r', 3)
+        .attr('fill', 'red')
+        .attr('opacity', 0.7);
+    }
+
     // App initialization pipeline
 async function initializeApp(viz_id) {
   // 1. Load viz config and points for selected viz_id
@@ -327,12 +357,14 @@ async function initializeApp(viz_id) {
         const scale = getFitScale(dims, MAX_BITMAP_SIZE, MAX_BITMAP_SIZE);
         state.transform = resetZoom(canvas, scale);
         updateView();
+        renderVizPoints();
       }
   
       // Set up zoom behavior
       const onZoom = (transform) => {
         state.transform = transform;
         updateView();
+        renderVizPoints();
       };
   
       const zoomBehavior = setupZoom(canvas, onZoom);
